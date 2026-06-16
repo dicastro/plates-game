@@ -33,10 +33,10 @@ ALWAYS adhere to the following absolute guardrails:
    - Rely strictly on the repository's files: `README.md`, `AI_CONTEXT.md`, `SPECS.md`, and the `/doc` folder.
    - Technical stack: React 19, TypeScript, Vite, Tailwind CSS. Follow the localization rules defined in the i18n Architecture Blueprint in `SPECS.md`.
 
-8. YOUTUBE PLAYABLES SANDBOX & CSP CONSTRAINTS:
-   - NEVER use native `localStorage`, `IndexedDB`, cookies, or generic browser visibility events (`document.hidden`).
-   - EXCLUSIVELY use the native YouTube Playables SDK equivalents: `ytgame.game.saveData`, `ytgame.game.loadData`, `ytgame.system.onPause`, and `ytgame.system.onResume`.
-   - Assume `window.ytgame` is globally available but add fallback safe checks for local development.
+8. PLATFORM ISOLATION & STRATEGY PATTERN:
+   - You are STRICTLY PROHIBITED from referencing `window.ytgame` or any native YouTube Playables SDK syntax inside visual React components, hooks, or styles. 
+   - All environment execution boundaries must be completely abstracted behind the `PlatformService` interface and instantiated via the `PlatformFactory` (`MemoryPlatform` vs `YouTubePlatform`).
+   - The `MemoryPlatform` must utilize `sessionStorage` for persistence emulation and the native Page Visibility API combined with dev-only global window triggers (`__SIMULATE_YT_PAUSE__` / `__SIMULATE_YT_RESUME__`) to mock YouTube's lifecycle events.
 
 9. NO EXTERNAL UI/STATE LIBRARIES:
    - Do not install heavy state managers (Redux, Zustand) or localization libraries (i18next). Use the native React Hooks and Context.
@@ -46,8 +46,14 @@ ALWAYS adhere to the following absolute guardrails:
     - Never write code that breaks global window namespaces.
     - Keep `renameGlobals: false` in mind during build pipeline discussions to protect `window.ytgame` methods.
 
-11. SECURITY (ANTI-CHEAT):
+11. SECURITY, SECURITY & TEMPORAL ANTI-CHEAT:
     - Never expose plaintext dictionary words in the client bundle. All validation mechanisms must resolve via the pre-compiled SHA-256 binary/hex hash structure detailed in `SPECS.md`.
+    - Never rely on the client device's native clock or local timezones (`new Date()`) for daily reset synchronization or validation logic. All daily countdowns and game seed operations must force the global UTC standard provided through the server-driven initialization token.
 
 12. TONALITY AND OUTPUT:
     - Be extremely concise, direct, and highly technical. Avoid conversational filler or redundant explanations.
+
+13. STRICT ASSET RESOURCE RESTRICTIONS:
+    - **Zero-Raster Policy:** Embedding or referencing PNG, JPG, WebP, or GIF files is strictly forbidden. All layout graphics, logos, icons, and backgrounds must be coded purely through Tailwind layers or structural inline SVG components.
+    - **Zero-Audio-File Policy:** Static sound files (MP3/WAV/OGG) are banned. All game audio must be generated via mathematical waveform synthesis using the native browser Web Audio API driven by deterministic Seeds. You must ensure all AudioContext configurations are fully disposed and closed on component unmounts to guarantee zero memory leaks during HMR.
+    - **Mobile WebView UI Locks:** Guard all interactive buttons against frantic user inputs using timestamp-based throttling hooks or state-driven `disabled` controls. Ensure `index.html` implements strict `user-scalable=no` viewports and global CSS enforces `overscroll-behavior: none` to mitigate elastic scrolling.

@@ -33,7 +33,7 @@ The following variables must be easily modifiable via a centralized `config.ts` 
 * **Language:** TypeScript (Strict typing enabled).
 * **Build Tool:** Vite.
 * **CSS Style Engine:** Tailwind CSS.
-* **Routing:** Single Page Application (SPA) virtual hash routing (`#/`, `#/travel`). Native page-reloads are prohibited to preserve the YouTube SDK runtime lifecycle.
+* **Platform Layer:** Decoupled architecture using the **Strategy Pattern** to swap platform providers at compile-time via Vite Environment Variables (`VITE_PLATFORM_TARGET`).
 
 ### External / Edge Backend
 * **Static Asset Delivery:** Cloudflare Pages (Hosts the bundled assets and the pre-computed compressed dictionary hash files under-demand).
@@ -42,19 +42,25 @@ The following variables must be easily modifiable via a centralized `config.ts` 
 
 ---
 
-## 3. Data Dictionary Validation Engine (Anti-Cheat)
+## 3. Security, Validation & Anti-Cheat Architecture
 
-### Dictionary Structural Format
+### 3.1 Data Dictionary Validation Engine
+#### Dictionary Structural Format
 Dictionaries are precompiled offline from plaintext lexical sources into binary or linear arrays of hex string segments representing the **SHA-256** checksum signature of each word.
 * Example raw array output layout: `["8bc2...", "1a4f...", "f5a2..."]`
 * Files are served over gzip/brotli encryption standards via Cloudflare CDN.
 
-### Validation Flow Architecture
+#### Validation Flow Architecture
 1.  User enters text string (e.g., `"Canto"`).
 2.  System extracts plain length integer metrics (`string.length`).
 3.  System checks if the text string explicitly contains the active day's 3-consonant variables.
 4.  System hashes the clean string conversion to SHA-256 lowercase.
 5.  System runs a lookup query: `DictionarySet.has(userHash)`.
+
+### 3.2 Timezone & Temporal Anti-Cheat (Deterministic Reset)
+* **Global UTC Standard:** The Daily Challenge resets globally and simultaneously for all players at exactly **00:00 UTC**. Local device timezones, regional offsets, or GPS/VPN locations must never dictate active game seeds or unlock future puzzles ahead of time.
+* **Server-Driven Clock Validation:** During `PlatformService.initialize()`, production environments (`CLOUDFLARE` or `YOUTUBE`) must fetch the current canonical timestamp from a secure, lightweight Cloudflare Worker endpoint.
+* **Drift Protection:** The core game loop, input verification, and daily timer countdown must rely strictly on this server-provided epoch time. The frontend will dynamically calculate and enforce elapsed duration from that safe baseline, rendering client-side clock tampering completely useless.
 
 ---
 
@@ -142,3 +148,79 @@ Every time a feature is successfully completed and documents are aligned, the sy
 1. **Modular Documentation (`/doc`):** To prevent massive token consumption and unmaintainable file growth, generic and detailed technical/functional specifications must be isolated into dedicated, cohesive markdown files inside the `/doc` directory. `SPECS.md` remains the high-level orchestrator.
 2. **Function as the Minimum Update Unit:** When modifying existing code, the system must avoid rewriting entire files if the changes are tightly scoped. It should output only the specific functions or blocks that changed. The developer will manually swap them.
 3. **Clarification Guardrail:** If an instruction or feature request contains ambiguity, the system must pause immediately and ask a single, targeted clarification question instead of making assumptions and generating potentially wasted code.
+
+---
+
+## 9. Platform Provider Strategy Architecture
+
+To support local development, a public web-review deployment on Cloudflare, and the final production deployment inside YouTube's native sandbox, all platform interactions are governed by a strict Strategy Pattern interface.
+
+### The Interface: `PlatformService`
+Every platform implementation must satisfy a shared TypeScript interface that abstracts the core functionalities of the YouTube Playables SDK (Persistence, Ads, Leaderboards, and Lifecycle):
+
+* `initialize(): Promise<void>` -> Initializes the platform context (and triggers `ytgame.game.firstLaunchCompleted()` on YouTube).
+* `saveData(key: string, data: any): Promise<void>` -> Persists player progress/state to the cloud storage (`ytgame.game.saveData`).
+* `loadData(key: string): Promise<any>` -> Retrieves saved player progress from the cloud storage (`ytgame.game.loadData`).
+* `submitScore(leaderboardId: string, value: number): Promise<void>` -> Submits a high score to a specific platform leaderboard (`ytgame.game.submitScore`).
+* `getLanguage(): string` -> Returns the user's current platform language code (e.g., 'en', 'es', 'fr' via `ytgame.system.getLanguage()`).
+* `showRewardedVideoAd(): Promise<boolean>` -> Pauses the game loop, requests a rewarded video ad (`ytgame.ads.showRewardedVideo`), and resolves true if the user watched it completely.
+* `muteAudio(isMuted: boolean): void` -> Instantly mutes or unmutes all Web Audio API nodes.
+* `onPause(callback: () => void): void` -> Registers a listener for when the platform forces a pause (`ytgame.system.onPause`).
+* `onResume(callback: () => void): void` -> Registers a listener for when the platform resumes the action (`ytgame.system.onResume`).
+
+### Available Strategies
+1.  **Memory Strategy (`MEMORY`):** Active during local rapid prototyping. Stores state in standard JavaScript memory structures. Volatile, clean slate on reload.
+2.  **Cloudflare Review Strategy (`CLOUDFLARE`):** Active for the public web review URL. Bypasses the YouTube SDK and communicates directly via HTTP `fetch` with custom Cloudflare Workers and KV storage to simulate remote user profiles and global leaderboards.
+3.  **YouTube Native Strategy (`YOUTUBE`):** Active for the final production bundle. Strictly maps all interface actions directly to the official `window.ytgame` SDK payloads.
+
+### Environment Control
+The active strategy is injected at runtime through a centralized Factory pattern determined by the Vite environment config variable:
+```typescript
+// Example configuration mapping
+const target = import.meta.env.VITE_PLATFORM_TARGET; // 'MEMORY' | 'CLOUDFLARE' | 'YOUTUBE'
+```
+
+---
+
+## 10. YouTube Technical Quality Assurance & Compliance
+
+To successfully pass YouTube's automated testing suite for external web previews, the codebase must strictly satisfy four core technical metrics:
+
+### 1. Ultra-Fast Load Times & Assets Weight
+* The total initial download size of the production bundle must strictly stay **below 5-10 MB** (ideally < 2MB).
+* **Strict Vector Graphics Mandate:** The use of rasterized image files (PNG, JPG, BMP, WebP) is strictly prohibited across the entire codebase. All visual assets—including the game logo, UI icons, thematic backgrounds, and illustrations—must be built exclusively using structural CSS layers or lightweight, semantic SVG code embedded directly as inline React components.
+* No external web fonts are allowed; system font fallbacks or Tailwind-controlled font stacks must be used.
+
+### 2. Mandatory Responsive Fluidity (Dynamic Layouts)
+* The root layout must dynamically scale to 100% of the viewport (`w-screen h-screen overflow-hidden`) without reloading the page or breaking the UI state when switching orientations (Portrait to Landscape and vice-versa).
+* The UI must account for dynamic overlay shifts (e.g., YouTube's live chat or application top-bars).
+* **Viewport & Input Lock:** The root `index.html` and global CSS must strictly disable browser-level intrusive mobile features. This includes blocking user-driven pinch-to-zoom (`user-scalable=no` inside the viewport meta) and preventing elastic bounce scrolling (`overscroll-behavior: none` applied to HTML/Body tags) to guarantee a native-app feel inside the YouTube sandbox.
+
+### 3. Unified Hybrid Input (Touch + Pointer)
+* All interactive components must be naturally accessible. Interaction logic must support both mouse clicks and mobile taps (`touchstart`/`touchend` or synthetic React `onClick` event wrappers) flawlessly.
+* **Custom Virtual Keyboard:** To guarantee layout stability and prevent mobile OS keyboards from resizing or shifting the WebView container, the game must strictly use a custom, in-game HTML/CSS virtual keyboard for text input. 
+* **Input Synchronization:** The interaction loop must support hybrid text input: capturing global desktop physical keyboard events (`keydown`) and mapping them to the same React state updated by the custom on-screen tactile buttons. Native HTML `<input>` overlays are strictly prohibited.
+* **Double-Submit Mitigation:** To protect game balance against network lag or frantic user inputs (double-clicking buttons), the codebase must implement strict debouncing/throttling mechanisms. Core gameplay input actions (like keypresses on the virtual keyboard) must use timestamp-based throttling refs, and state-driven submission flows must utilize explicit `disabled` states during asynchronous processing.
+
+### 4. Audio Lifecycle Management
+* The system must implement immediate audio muting and pausing capabilities.
+* The `PlatformService` interface must enforce a `muteAudio(isMuted: boolean): void` method.
+* Whenever the active platform triggers a pause or background event (such as `ytgame.system.onPause`), audio generation must instantly cease.
+
+## 11. Procedural Audio & Music Engine (Deterministic Synthesis)
+
+To adhere to YouTube's strict asset weight restrictions, the project prohibits static audio files (MP3/WAV) for background music. It relies entirely on real-time mathematical audio synthesis via the native Web Audio API.
+
+### 1. Deterministic Seeding (PRNG)
+* All musical choices (tempo, key, chord progressions, melody patterns) must derive from a Pseudo-Random Number Generator (PRNG) driven by a specific numeric **Seed**.
+* Given the same Seed, the engine must produce exactly identical musical tracks across different devices and sessions. This seed can be stored alongside game saves to allow identical playback.
+
+### 2. Audio Engine Interface & Lifecycle
+The module must expose a isolated control interface:
+* `start(seed: number): void` -> Initializes the Web Audio API context, boots oscillators/gain nodes, and kicks off the infinite procedural playback loop based on the seed.
+* `stop(): void` -> Instantly halts all schedules and disposes of the active audio context.
+* `setMute(isMuted: boolean): void` -> Dynamically ramps gain nodes to 0 (or back to normal) to support real-time platform muting without breaking the playback timeline.
+
+### 3. Evolutionary Scalability
+* The baseline implementation will utilize simple primitive wave oscillators (Sine/Triangle) running an infinite random arpeggiator or chord drone.
+* The architecture must remain fully decoupled, allowing future updates to inject complexity based on external game state parameters (e.g., speeding up BPM when the timer is low, shifting keys based on the Travel ID, or changing instruments based on the season).

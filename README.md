@@ -16,7 +16,8 @@ The core game mechanic revolves around a daily challenge: players are given a sp
 
 * **Frontend:** React, TypeScript, Vite, Tailwind CSS.
 * **Hosting & Serverless Compute:** Cloudflare Pages + Cloudflare Workers + Cloudflare KV.
-* **Target Platform:** YouTube Playables SDK (HTML5 Integration).
+* **Platform Abstraction:** Architecture driven by the **Strategy Pattern** to decouple core game logic from backend platform implementations.
+* **Target Delivery:** Dual-target builds. Capable of running as a standard public web application (hosted on Cloudflare for external review and onboarding) or compiling into a self-contained HTML5 ZIP package for the native **YouTube Playables SDK**.
 * **Architecture Goal:** 100% Serverless, Infinite Scalability, 0€ Infrastructure Maintenance Cost.
 
 ---

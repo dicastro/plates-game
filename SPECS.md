@@ -75,6 +75,33 @@ To mitigate malicious users intercepting execution flows or invoking native plat
    }
 ```
 1. **Tamper Detection Policy**: During `PlatformService.loadData()`, the system must decrypt the payload and re-verify the integrity signature against the internal salt. If the signatures do not match, or if the data structure is corrupted (indicating a raw JSON console injection attempt), the validation layer must trip a security flag: the save file is treated as compromised, the UI locks, and the player's active day is automatically penalized and marked as depleted (5 failed attempts).
+
+### 3.3 Advanced Cryptographic Countermeasures (Vector Defense)
+
+#### 3.3.1 Dictionary Salt Protection (Anti-Rainbow Table)
+* **Mechanism:** To prevent attackers from downloading the compiled SHA-256 JSON dictionaries from the CDN and reverse-engineering them using pre-computed local wordlists (Rainbow Table attacks), all word signatures must be compiled offline using a dynamic salting pattern: `SHA-256(lowercase_word + project_secret_salt)`.
+* **Execution:** The frontend runtime validation engine will append this immutable internal salt to the user's input string before hashing and checking existence within the `DictionarySet`.
+
+#### 3.3.2 Leaderboard Submission Integrity & Identity Binding
+* **Identity Injection:** The encrypted storage payload must bind the player's unique platform identifier (`ytgame.system.getUserId()`) and the active day's temporal timestamp inside the encrypted string block before calculating the security integrity signature.
+* **Replay Attack Mitigation:** If a player attempts to copy a valid encrypted save state from another user or session, the decryption routine will detect an identity or seed mismatch against the live environment variables, triggering an immediate session invalidation and corruption penalty.
+* **Score Verification Flow:** Scores pushed to `PlatformService.submitScore()` must be accompanied by the verified state ledger token. Pure console invocations attempting to push arbitrary integers to the leaderboard interface without a cryptographically sealed game-completion event will be structurally flagged as anomalous.
+
+#### 3.3.3 Edge Server Verification Flow (Cloudflare Worker Verdict)
+To achieve true data integrity without relying on frontend security obfuscation alone, the definitive validation of the match and leaderboard authorization must be delegated to a secure, serverless Cloudflare Worker endpoint.
+
+1. **Client-Side Match Execution:** The frontend handles all real-time UX, visual validation, and incremental local state tracking.
+1. **The Verification Payload:** Upon solving the puzzle or exhausting all attempts, the frontend must bypass direct YouTube leaderboard submission and instead dispatch an asynchronous HTTP POST request to the secure Cloudflare Worker containing:
+   * The active player's Platform Identifier (`userId`).
+   * The target puzzle configuration (`daySeed`).
+   * The plain-text sequence of attempted words entered by the user (not the hashes).
+   * The elapsed resolution time.
+1. **Server-Side Re-Evaluation:** The Cloudflare Worker—running in an isolated, private server environment—performs the absolute verification audit:
+   * It appends the private `VITE_DICTIONARY_SALT` (stored securely as an encrypted environment variable in Cloudflare's dashboard, completely invisible to the client) to each received plain-text word.
+   * It hashes the salted strings to SHA-256 and validates their existence against the master dictionary set.
+   * It re-verifies that the words explicitly contain the 3 consonants required by the active `daySeed` and checks for logical time-drift anomalies.
+1. **The Score Signature Token:** If the Worker deems the match fully legitimate, it signs a short-lived cryptographic validation token. The frontend receives this token and is only then authorized to invoke `PlatformService.submitScore()` to commit the verified score to YouTube's global leaderboard.
+
 ---
 
 ## 4. Game Modes Layout

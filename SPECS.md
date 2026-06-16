@@ -6,23 +6,32 @@ This specification document outlines the technical stack, state configuration, w
 
 ## 1. System Constants & Placeholders (Configuration)
 
-The following variables must be easily modifiable via a centralized `config.ts` file:
+The following variables must be easily modifiable via a centralized `src/config/gameConfig.ts` file to govern the global mechanics:
 
-### General Game Variables
-* `DAILY_ATTEMPTS_LIMIT`: `[DEFINE_VALUE]` (e.g., 5) - Maximum word entry attempts allowed per day in Normal Mode.
-* `MAX_STORAGE_TRIPS_HISTORIC`: `[DEFINE_VALUE]` (e.g., 30) - Max number of historical travel/remote sessions stored in user Cloudflare KV / YouTube data to fit within constraints.
+### 1.1 General & Core Game Settings
+* `DAILY_ATTEMPTS_LIMIT`: `5` - Maximum word entry attempts allowed per day in Normal (Global) Mode.
+* `MAX_STORAGE_TRIPS_HISTORIC`: `30` - Max number of historical travel/remote sessions stored in user Cloudflare KV / YouTube data.
+* `DICTIONARY_FALLBACK_LANG`: `"en"` - System language recovery toggle to prevent undefined key rendering.
 
-### Mode: Travel Mode Settings
-* `TRAVEL_MAX_CONSONANTS`: `[DEFINE_VALUE]` (e.g., 4) - Maximum allowed consonants chosen by the creator.
-* `TRAVEL_MIN_CONSONANTS`: `[DEFINE_VALUE]` (e.g., 3) - Minimum allowed consonants chosen by the creator.
-* `TRAVEL_COUNTDOWN_SECONDS`: `[DEFINE_VALUE]` (e.g., 60) - Strict countdown timer per turn for instant synchronous tension.
-* `TRAVEL_ATTEMPTS_LIMIT`: 1 (Fixed) - Only one single attempt is allowed.
-* `TRAVEL_KV_TTL_SECONDS`: `[DEFINE_VALUE]` (e.g., 10800) - Time To Live for the room in Cloudflare KV before auto-deletion (e.g., 3 hours).
+### 1.2 Plate Digit Mechanics (Luck & Scoring Modifiers)
+* `PLATE_SCORING_BASE_SCORE`: `100` - Base points awarded for a valid word validation.
+* `PLATE_NUMERIC_BONUS_ENABLED`: `true` - Toggle to enable digit extraction logic from license plates.
+* `PLATE_NUMERIC_BONUS_MULTIPLIER`: `1` - Scale factor applied to the sum of the 4 digits (e.g., Plate `9210` -> Sum = 12 * factor).
+* `PLATE_JACKPOT_PATTERN_MULTIPLIER`: `2.0` - Score multiplier if the 4 digits trigger a special pattern (Pairs like `2244`, Trios like `7771`, or Palindromes/Capicúa like `1221`).
 
-### Mode: Remote Mode Settings
-* `REMOTE_TIME_WINDOW_HOURS`: `[DEFINE_VALUE]` (e.g., 24) - Time limit window allowed for players to submit their scores.
-* `REMOTE_ATTEMPTS_LIMIT`: 1 (Fixed) - Only one single attempt allowed.
-* `REMOTE_KV_TTL_SECONDS`: `[DEFINE_VALUE]` (e.g., 172800) - Time To Live for asynchronous rooms in Cloudflare KV (e.g., 48 hours).
+### 1.3 Mode: Travel Mode Settings (Synchronous Local Multplayer)
+* `TRAVEL_DEFAULT_ROUNDS`: `5` - Number of sequential license plate rounds that constitute a full game session inside a vehicle/room.
+* `TRAVEL_MIN_CONSONANTS`: `3` - Fixed floor for consonant extraction.
+* `TRAVEL_MAX_CONSONANTS`: `3` - Fixed ceiling for consonant extraction (Spanish plate standard constraint).
+* `TRAVEL_COUNTDOWN_SECONDS`: `60` - Strict countdown timer per round for instant synchronous tension.
+* `TRAVEL_ATTEMPTS_LIMIT`: `1` - Only one single high-stakes attempt allowed per round.
+* `TRAVEL_LOBBY_TIMEOUT_SECONDS`: `300` - Maximum time (5 minutes) a room can stay in "Lobby" status waiting for players to join before auto-disposal.
+* `TRAVEL_KV_TTL_SECONDS`: `10800` - Time To Live (3 hours) for the room state in Cloudflare KV before hard deletion.
+
+### 1.4 Mode: Remote Mode Settings (Asynchronous Friends Challenge)
+* `REMOTE_TIME_WINDOW_HOURS`: `24` - Time limit window allowed for challenged friends to submit their scores to the room.
+* `REMOTE_ATTEMPTS_LIMIT`: `1` - Only one single definitive attempt allowed per player.
+* `REMOTE_KV_TTL_SECONDS`: `172800` - Time To Live (48 hours) for asynchronous rooms in Cloudflare KV before expiration.
 
 ---
 
@@ -104,7 +113,33 @@ To achieve true data integrity without relying on frontend security obfuscation 
 
 ---
 
-## 4. Game Modes Layout
+## 4. Scoring & Leaderboard Architecture (Plate Mechanics)
+
+### 4.1 The Inverse Scoring Formula
+To maintain seamless compatibility with the YouTube Playables SDK Leaderboard sub-system (which natively ranks scores in ascending numeric order), the game translates word length efficiency into a high-value score integer using an inverse baseline layout:
+
+```text
+Final Score = (PLATE_SCORING_BASE_SCORE - Word_Length) + Calculated_Plate_Bonus
+```
+
+### 4.2 Plate Digit Logic & Pattern Detection
+
+The 4 digits extracted from the license plate act as a dynamic gameplay modifier to introduce excitement and tactical risk:
+
+1. **Sum Base Bonus**: The absolute sum of the 4 digits is calculated. If `PLATE_NUMERIC_BONUS_ENABLED` is true, this sum is multiplied by `PLATE_NUMERIC_BONUS_MULTIPLIER` and added to the score pool.
+1. **Premium Plate Patterns (Jackpots)**: Before score computation, the 4-digit string is audited by a regex/pattern engine to check for structural lottery states:
+    * **Capicúa (Palindrome)**: e.g., `1221`, `4334`. Triggers `PLATE_JACKPOT_PATTERN_MULTIPLIER`.
+    * **Perfect Pairs**: e.g., `2244`, `1188`. Triggers standard jackpot multiplication.
+    * **The Trio/Quartet**: e.g., `7772`, `0000`. High-tier score scaling.
+
+### 4.3 Platform Submission Flow
+
+* **Daily Reset Synch**: The `Daily Challenge` scores are submitted to a volatile daily leaderboard ID managed by YouTube. The SDK aggregates these scores into the player's lifetime historic profile automatically.
+* **Failed Sessions**: If a player exhausts all `DAILY_ATTEMPTS_LIMIT` without finding a valid word, the submitted score for that dynamic day seed is strictly `0`.
+
+---
+
+## 5. Game Modes Layout
 
 ### 🟢 Normal Mode (Daily Sandbox Challenge)
 * Global seed synchronizes the daily 3 consonants across all users globally.
@@ -122,7 +157,7 @@ To achieve true data integrity without relying on frontend security obfuscation 
 
 ---
 
-## 5. Security & Privacy Blueprint
+## 6. Security & Privacy Blueprint
 
 * **Zero Personal Data Tracking:** The custom Cloudflare Worker system is completely blind to YouTube profile specifics (Handle names, user IDs, Avatars).
 * **Session Aliasing:** Multiplayer features require an onboarding screen prompting the client to supply an ephemeral text Name Alias for display on the local leaderboard scoreboard.
@@ -130,7 +165,7 @@ To achieve true data integrity without relying on frontend security obfuscation 
 
 ---
 
-## 6. Build Pipelines & Deployment Workflows
+## 7. Build Pipelines & Deployment Workflows
 
 ### Target Build Requirements
 The final deployment bundle must compile directly into a single self-contained, standard standalone flat directory zipped structure (`.zip`) containing the `index.html` file alongside asset files, weighing safely under YouTube’s strict size cap limit.
@@ -150,7 +185,7 @@ npm run build
 
 ---
 
-## 7. Internationalization (i18n) Architecture Blueprint
+## 8. Internationalization (i18n) Architecture Blueprint
 
 To keep the application lightweight and avoid external library overhead, the project uses a custom React Hook and strict TypeScript schema approach for translations.
 
@@ -166,7 +201,7 @@ To keep the application lightweight and avoid external library overhead, the pro
 
 ---
 
-## 8. Multi-Language Communication & Documentation Rules
+## 9. Multi-Language Communication & Documentation Rules
 
 ### Language Boundaries
 1. All codebase items—including variables, component logic, code comments, inline documentation, and Markdown files (`README.md`, `AI_CONTEXT.md`, `SPECS.md`, etc.)—must be written **100% in English**.
@@ -191,7 +226,7 @@ Every time a feature is successfully completed and documents are aligned, the sy
 
 ---
 
-## 9. Platform Provider Strategy Architecture
+## 10. Platform Provider Strategy Architecture
 
 To support local development, a public web-review deployment on Cloudflare, and the final production deployment inside YouTube's native sandbox, all platform interactions are governed by a strict Strategy Pattern interface.
 
@@ -222,7 +257,7 @@ const target = import.meta.env.VITE_PLATFORM_TARGET; // 'MEMORY' | 'CLOUDFLARE' 
 
 ---
 
-## 10. YouTube Technical Quality Assurance & Compliance
+## 11. YouTube Technical Quality Assurance & Compliance
 
 To successfully pass YouTube's automated testing suite for external web previews, the codebase must strictly satisfy four core technical metrics:
 
@@ -247,7 +282,7 @@ To successfully pass YouTube's automated testing suite for external web previews
 * The `PlatformService` interface must enforce a `muteAudio(isMuted: boolean): void` method.
 * Whenever the active platform triggers a pause or background event (such as `ytgame.system.onPause`), audio generation must instantly cease.
 
-## 11. Procedural Audio & Music Engine (Deterministic Synthesis)
+## 12. Procedural Audio & Music Engine (Deterministic Synthesis)
 
 To adhere to YouTube's strict asset weight restrictions, the project prohibits static audio files (MP3/WAV) for background music. It relies entirely on real-time mathematical audio synthesis via the native Web Audio API.
 

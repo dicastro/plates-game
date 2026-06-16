@@ -1,4 +1,4 @@
-# Project Specifications: Consonant Word Challenge
+# Project Specifications: PLATES - The Ultimate License Plate Word Game
 
 This specification document outlines the technical stack, state configuration, workflows, and core architecture of the application. All placeholders marked with `[DEFINE_VALUE]` represent configuration variables awaiting final numerical tunings.
 
@@ -62,6 +62,19 @@ Dictionaries are precompiled offline from plaintext lexical sources into binary 
 * **Server-Driven Clock Validation:** During `PlatformService.initialize()`, production environments (`CLOUDFLARE` or `YOUTUBE`) must fetch the current canonical timestamp from a secure, lightweight Cloudflare Worker endpoint.
 * **Drift Protection:** The core game loop, input verification, and daily timer countdown must rely strictly on this server-provided epoch time. The frontend will dynamically calculate and enforce elapsed duration from that safe baseline, rendering client-side clock tampering completely useless.
 
+#### 3.2.1 Client-Side Opaque Persistence Layer (Console Injection Shield)
+To mitigate malicious users intercepting execution flows or invoking native platform storage APIs directly via the browser developer console (e.g., executing `window.ytgame.game.saveData()` to manually clear daily attempts), the application must enforce an immutable, encrypted serialization protocol:
+
+1. **State Payload Structure:** The game state must never store open numerical variables like `attempts: 3`. Instead, it must persist a deterministic, incremental ledger, such as an array of the SHA-256 hashes of the words submitted during the session (`attemptsLedger: [hash1, hash2, ...]`).
+1. **Cryptographic Wrapping:** Before forwarding any stringified state to `PlatformService.saveData()`, the data must pass through a lightweight symmetric encryption utility or structural obfuscation cycle running a custom checksum routine (HMAC/SHA-256) combined with a hardcoded internal salt.
+1. **Serialized Output Format:** The payload written to the platform storage must resolve to an opaque structure:
+```json
+   {
+     "payload": "U2FsdGVkX19v...", 
+     "signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   }
+```
+1. **Tamper Detection Policy**: During `PlatformService.loadData()`, the system must decrypt the payload and re-verify the integrity signature against the internal salt. If the signatures do not match, or if the data structure is corrupted (indicating a raw JSON console injection attempt), the validation layer must trip a security flag: the save file is treated as compromised, the UI locks, and the player's active day is automatically penalized and marked as depleted (5 failed attempts).
 ---
 
 ## 4. Game Modes Layout

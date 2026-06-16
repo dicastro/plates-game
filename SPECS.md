@@ -101,3 +101,44 @@ The project utilizes automated compilation middleware hook chains to guarantee h
 # Executing this single pipeline compiles TypeScript, obfuscates structures, and creates the ready-to-upload ZIP file
 npm run build
 ```
+
+---
+
+## 7. Internationalization (i18n) Architecture Blueprint
+
+To keep the application lightweight and avoid external library overhead, the project uses a custom React Hook and strict TypeScript schema approach for translations.
+
+### Directory Structure
+* `src/i18n/locales/en.ts` - Base English dictionary object defining the ground-truth schema.
+* `src/i18n/locales/es.ts` - Spanish dictionary object implementing `TranslationSchema`.
+* `src/i18n/types.ts` - Explicit types exported using `typeof en`.
+* `src/i18n/useTranslation.ts` - Custom hook executing language detection from `window.ytgame.system.getLanguage()` and rendering text strings with primitive variable injection (`{{variable}}`).
+
+### Core Implementation Rules
+1. Component text must NEVER be hardcoded. Always invoke the `t('namespace.key')` function.
+2. The `useTranslation` hook must safe-guard missing keys by falling back to the English dictionary string equivalent before printing the path string literal.
+
+---
+
+## 8. Multi-Language Communication & Documentation Rules
+
+### Language Boundaries
+1. All codebase items—including variables, component logic, code comments, inline documentation, and Markdown files (`README.md`, `AI_CONTEXT.md`, `SPECS.md`, etc.)—must be written **100% in English**.
+2. Conversation, prompts, and feedback with the developer may happen in **Spanish**. The system must automatically ingest Spanish feedback but output English code/documentation.
+
+### Documentation Lifecycle
+1. Documentation must never store a changelog or chronological history of modifications. It must strictly represent the **current ground-truth state** of the production code.
+2. Whenever a feature or code change is validated and finalized, all relevant Markdown documents must be updated immediately to reflect the new architecture.
+
+### Commit Messages
+Every time a feature is successfully completed and documents are aligned, the system must generate a precise Git commit message using semantic commits conventions (e.g., `feat:`, `fix:`, `docs:`).
+
+### Code Quality & Refactoring Standards
+1. **No Hacks or Workarounds:** Always adhere to software engineering best practices. Avoid temporary patches, anti-patterns, or technical debt shortcuts.
+2. **Modular Architecture Over Monoliths:** If a function, component, or module grows significantly in complexity, branching (deep nesting/conditionals), or line count, the system must pause and evaluate if a refactor into smaller, decoupled, and highly cohesive sub-units is necessary before applying new logic.
+3. **Agile MVP Testing Strategy:** Formal testing (unit, integration, or E2E) is strictly suspended during this initial development phase to maximize agility and ease massive architectural refactors. The focus is to reach a robust Minimum Viable Product (MVP) rapidly through clean code design alone.
+
+### Token Optimization & Communication Protocol
+1. **Modular Documentation (`/doc`):** To prevent massive token consumption and unmaintainable file growth, generic and detailed technical/functional specifications must be isolated into dedicated, cohesive markdown files inside the `/doc` directory. `SPECS.md` remains the high-level orchestrator.
+2. **Function as the Minimum Update Unit:** When modifying existing code, the system must avoid rewriting entire files if the changes are tightly scoped. It should output only the specific functions or blocks that changed. The developer will manually swap them.
+3. **Clarification Guardrail:** If an instruction or feature request contains ambiguity, the system must pause immediately and ask a single, targeted clarification question instead of making assumptions and generating potentially wasted code.

@@ -1,45 +1,95 @@
-# AI Context & Project History
+# AI_CONTEXT.md — Project Context & Architectural Decisions
 
-This document serves as the historical context and architectural alignment for any AI Assistant contributing to this project. It encapsulates the core decisions made during the system design phase.
-
-## 🧠 Project Background & Intent
-The developer is a Senior Java Backend Programmer building a specialized HTML5 client-side word puzzle game for YouTube Playables. Because the developer is a backend expert, the frontend layout (HTML, CSS, SVG) and specific client-side mathematics will be heavily assisted by AI generation.
-
-## ⚔️ The Core Anti-Cheat Problem & Solution
-* **The Risk:** Since the game rewards finding the *shortest* word, exposing a plain-text dictionary array in the JavaScript bundle would make it trivial for any user to write a browser script to scrape the file, sort by length, and automate a perfect score.
-* **The Blueprint:** We do **not** store words. We store pre-computed **SHA-256 hashes** of the valid words. When a user submits a word, the frontend hashes it locally and checks if that hash exists in the pre-compiled Set. Word length is calculated directly from the user's plain-text input string before hashing. This protects intellectual property and integrity at 0 bytes of database lookups.
-
-## 🧭 Architectural Constraints & Discoveries
-1.  **YouTube Playables Sandbox:** The game runs inside an iframe. Standard storage APIs (`localStorage`, `IndexedDB`, Cookies) and standard visibility triggers (`document.hidden`) are strictly banned or restricted. We **must exclusively** use the native YouTube SDK (`ytgame.game.saveData`, `loadData`, `system.onPause`, `onResume`).
-1. **Network Boundaries:** YouTube enforces a strict Content Security Policy (CSP). External dictionary asset downloads must be white-listed in the Google developer console.
-1. **No Traditional Backend:** The project deliberately avoids standard relational databases, VPS hosting, or dedicated API servers to maintain **0€ infrastructure costs**. Cloudflare Pages (Frontend) and Cloudflare Workers + Key-Value Storage (Edge Compute) handle all dynamic behaviors.
-1. **Geographic & Review Restrictions:** As of 2026, YouTube Playables is not natively accessible in certain regions (including Spain). To apply for official inclusion, Google requires a fully testable public web URL. 
-1. **Environment Decoupling:** The codebase must never perform direct, hardcoded platform checks inside UI components. All platform capabilities (Save Data, Load Data, Leaderboards) are strictly abstracted behind a Strategy Pattern interface.
-
-## 🎼 The Audio Engine Choice (Deterministic Synthesis)
-Instead of packing heavy `.mp3` or `.wav` files that bloat the initial bundle weight, or using traditional asset streaming, the game relies on procedural audio generation. We use the browser's native **Web Audio API** to synthesize waveforms on the fly. 
-* All musical structures (tempo, chords, melodies) are derived from a Pseudo-Random Number Generator (PRNG) driven by a specific numeric **Seed**. 
-* Given the same Seed, the engine produces exactly identical tracks across different devices. 
-* This architecture allows mathematical sound modulation (e.g., speeding up the BPM when the timer is low) and permits saving the seed alongside the game state to perfectly recreate the match's soundtrack.
+This file gives any AI assistant the background needed to understand **what this project is**
+and **why** key decisions were made. Operating rules and guardrails are in `AGENT.md`.
 
 ---
 
-## 🛡️ AI Developer Guardrails & Strict Coding Boundaries
+## Project Background
 
-Any AI contributing to this codebase must strictly enforce the following execution mandates:
+**PLATES** is a lightweight HTML5 word puzzle game built for the **YouTube Playables** platform.
 
-### 1. Platform Isolation
-* **Zero Direct SDK References:** You are strictly prohibited from referencing `window.ytgame` or any YouTube Playables SDK syntax inside visual React components, hooks, or styles. Everything must go through the abstracted `PlatformService`.
-* **Testing Emulation:** The local testing strategy (`MemoryPlatform`) must mock all async data using `sessionStorage` and emulate lifecycle state events (`onPause`/`onResume`) using the native Page Visibility API (`visibilitychange`) alongside dev-only global hooks (`window.__SIMULATE_YT_PAUSE__` / `window.__SIMULATE_YT_RESUME__`).
+The developer is a Senior Java Backend Engineer — frontend layout, SVG graphics, and
+client-side mathematics are heavily AI-assisted.
 
-### 2. Assets & Footprint Restrictions
-* **Zero-Raster Policy:** Never include PNG, JPG, WebP, or GIF files. All visual assets—including the game logo, icons, thematic backgrounds, and illustrations—must be built exclusively using lightweight structural CSS layers or semantic, inline SVG components.
-* **Zero-Audio-File Policy:** Static sound files are banned. Audio must be closed and destroyed strictly upon component unmounting to prevent memory leaks during Hot Module Replacements (HMR).
+### Core Mechanic
+Players are given 3 consonants extracted from a license plate and must find the **shortest
+valid word** that contains all three. Shorter words score higher (inverse scoring formula).
 
-### 3. Defensive Client-Side UX & Anti-Cheat
-* **Temporal Security:** Never rely on the client device's native clock or local timezones (`new Date()`) for daily reset synchronization. The current active epoch and puzzle seed calculation must derive entirely from the UTC standard provided by the platform initialization hook (fetched via server-driven Cloudflare Workers in production).
-* **Double-Submit Mitigation:** Core gameplay actions (like on-screen virtual keyboard inputs) must implement timestamp-based throttling refs. Explicit state-driven `disabled` HTML attributes must lock asynchronous flow submission buttons to defend game integrity against frantic clicks or network lag.
-* **Layout Lock:** Prevent WebView container resizing on mobile devices. The root setup must strictly block user-driven pinch-to-zoom (`user-scalable=no` meta viewport) and eliminate elastic bounce behaviors (`overscroll-behavior: none` on HTML/Body).
-* **Console Injection Shield:** All user save states must be encrypted and cryptographically signed before being sent to the platform storage API. Raw text JSON strings are strictly banned from persistence. If the deserialization layer detects a signature mismatch during initialization, it must automatically treat the session as compromised and lock the user out for the day.
-* **Serverless Edge Verdict:** The ultimate judge of game legitimacy is the Cloudflare Worker, not the client. While the UI validates hashes locally for instant responsive feedback, leaderboard authorization tokens must be requested by sending the plain-text word history to the secure Worker endpoint where the project salt is privately hosted.
-* **Inverse Scoring Implementation:** Always calculate leaderboard scores using the inverse formula: `(Base - Length) + Bonus`. Never submit raw word lengths to the platform ranking service, as lower lengths must yield higher leaderboard positions.
+### Target Platform
+YouTube Playables — an iframe-sandboxed HTML5 game runtime inside the YouTube app.
+Strict constraints apply: bundle size, CSP, storage APIs, and input handling.
+
+---
+
+## Key Architectural Decisions & Rationale
+
+### 1. SHA-256 Hash Dictionary (Anti-Cheat)
+**Problem:** Exposing a plaintext word list in the JS bundle lets any user script a perfect score.
+**Solution:** Store only pre-computed SHA-256 hashes of valid words. The frontend hashes the
+user's input (+ a private salt) and checks existence in a `Set`. Word length is read from
+the plain-text input before hashing — never from the dictionary.
+
+### 2. Strategy Pattern for Platform Abstraction
+**Problem:** The game must run in 3 environments: local dev, Cloudflare public review, YouTube production.
+**Solution:** A `PlatformService` interface abstracts all platform calls. `PlatformFactory`
+selects the correct implementation at runtime via `VITE_PLATFORM_TARGET`.
+Components never reference `window.ytgame` directly.
+
+### 3. Procedural Audio via Web Audio API
+**Problem:** MP3/WAV files bloat the bundle beyond YouTube's size cap.
+**Solution:** All music is synthesized in real-time using the browser's native Web Audio API,
+driven by a deterministic LCG PRNG seeded by a numeric value. Same seed = identical track
+on any device. Travel Mode uses the Room ID as the seed so co-located players hear the same music.
+
+### 4. Cloudflare Serverless Backend (0€ Cost)
+**Problem:** No budget for VPS or traditional API servers.
+**Solution:** Cloudflare Pages (static assets) + Cloudflare Workers (edge compute) +
+Cloudflare KV (transient storage). Infinite scalability at zero infrastructure cost.
+
+### 5. Opaque Persistence (Console Injection Shield)
+**Problem:** Users can invoke `ytgame.game.saveData()` directly from the browser console
+to manipulate saved state (e.g., reset daily attempt counters).
+**Solution:** All persisted data is wrapped in a `PersistedEnvelope` with a Base64 payload
+and HMAC-SHA-256 signature. Tampered or raw JSON payloads are detected on load and trigger
+an automatic day-lock penalty.
+
+### 6. Cloudflare Worker as Leaderboard Authority
+**Problem:** Client-side validation can be bypassed; arbitrary scores can be submitted.
+**Solution:** The Worker holds the private dictionary salt (never exposed to the client).
+It independently re-validates every submitted word and issues a short-lived cryptographic
+token. Only token-bearing requests are authorized to invoke `submitScore()`.
+
+### 7. UTC-Only Temporal Logic
+**Problem:** Client device clocks can be manipulated to unlock future daily puzzles.
+**Solution:** `PlatformService.initialize()` fetches the canonical epoch from a Cloudflare
+Worker. All game timers, seed derivation, and daily resets use this server-provided timestamp.
+`new Date()` is forbidden in game logic.
+
+### 8. Custom Virtual Keyboard
+**Problem:** Native mobile OS keyboards resize the WebView, breaking the layout.
+**Solution:** A fully custom HTML/CSS virtual keyboard handles all text input. Native
+`<input>` elements are forbidden. Physical keyboard events (`keydown`) are mapped to the
+same React state as the virtual keys for desktop support.
+
+---
+
+## Platform Constraints Discovered
+
+- YouTube Playables runs in an iframe — `localStorage`, `IndexedDB`, and `Cookies` are banned.
+  Only `ytgame.game.saveData()` / `loadData()` are permitted for persistence.
+- YouTube enforces a strict CSP — external dictionary CDN domains must be whitelisted in
+  the Google developer console.
+- YouTube Playables is not accessible in Spain (as of 2026). A public Cloudflare review URL
+  is required to apply for official inclusion.
+- The YouTube SDK uses `document.hidden` alternatives — the `visibilitychange` event behavior
+  inside the iframe differs from standard browser behavior; rely on `ytgame.system.onPause/onResume`.
+
+---
+
+## What's New System (Player Updates)
+
+Post-1.0.0, player-facing release notes are stored in `src/i18n/updates/XX.json` (one file
+per locale). These are separate from the technical `CHANGELOG.md`. The authoring workflow
+is: English draft from changelog → Spanish adaptation (developer-reviewed) → AI translation
+to remaining locales. See `doc/functional/player-updates.md` for full spec.

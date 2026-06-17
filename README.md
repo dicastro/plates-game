@@ -24,7 +24,7 @@ The core game mechanic revolves around a daily challenge: players are given a sp
 
 ---
 
-## 🚀 Local Development (Phase 1 Esqueleto)
+## 🚀 Local Development
 
 ```bash
 # 1. Install dependencies

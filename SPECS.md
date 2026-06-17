@@ -173,7 +173,7 @@ The final deployment bundle must compile directly into a single self-contained, 
 ### Configuration (`vite.config.ts`)
 The project utilizes automated compilation middleware hook chains to guarantee hands-free deployment artifact creation.
 
-1.  **Code Obfuscation Phase:** Uses `vite-plugin-javascript-obfuscator` to obfuscate logic files automatically on production compiles.
+1.  **Code Obfuscation Phase:** Uses `rollup-obfuscator` (with `javascript-obfuscator` as peer dependency) to obfuscate logic files automatically on production compiles. Obfuscator options must be passed inside an `options: {}` wrapper object.
     * *Constraint configuration mandatory requirement:* `renameGlobals: false` must remain disabled to prevent corruption of global platform SDK entry methods belonging to `window.ytgame`.
 2.  **Zip Generation Phase:** Invokes `vite-plugin-zip-pack` directly targeting the output production build folder `/dist`.
 

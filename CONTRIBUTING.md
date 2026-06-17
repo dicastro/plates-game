@@ -88,7 +88,7 @@ npm install --save-dev release-it @release-it/conventional-changelog
 ### Releasing a New Version
 
 ```bash
-npx release-it
+npm run release
 ```
 
 This single command will:
@@ -99,7 +99,7 @@ This single command will:
 
 For a dry run without writing anything:
 ```bash
-npx release-it --dry-run
+npm run release:dry
 ```
 
 ### Pre-1.0.0 Bump Rules

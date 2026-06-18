@@ -60,5 +60,6 @@ PlatformFactory.create() // → returns the correct strategy instance
 | Variable | Values | Location |
 |---|---|---|
 | `VITE_PLATFORM_TARGET` | `MEMORY` / `CLOUDFLARE` / `YOUTUBE` | `.env.development` / `.env.demo` / `.env.yt-local` / `.env.yt-zip` |
+| VITE_DICT_TARGET | `es` / `en` / `fr` / ... | `.env.development` / `.env.demo` / `.env.yt-local` / `.env.yt-zip` |
 | `VITE_STORAGE_SALT` | arbitrary secret string | `.env.development` / Cloudflare dashboard (encrypted) |
 | `VITE_DICTIONARY_SALT` | arbitrary secret string | Cloudflare dashboard only — never in repo |

@@ -91,6 +91,16 @@ same React state as the virtual keys for desktop support.
 - The YouTube SDK exposes a single storage blob (`saveData`/`loadData` with no key). The
   `PlatformService` interface adopts this constraint across all platforms — all game state is
   serialized into one envelope. `MemoryPlatform` uses a fixed internal key `"plates_save"`.
+- The YouTube SDK prohibits the Page Visibility API in production. `YouTubePlatform`
+  must use exclusively `ytgame.system.onPause` / `ytgame.system.onResume` for lifecycle
+  events. `MemoryPlatform` uses `visibilitychange` as a dev-only approximation — this
+  is correct and intentional.
+- `ytgame.engagement.sendScore({ value: N })` accepts a single numeric value with no
+  leaderboard selector. The leaderboard is determined by YouTube from the registered
+  game identity of the uploaded ZIP.
+- `ytgame.system.getLanguage()` returns a full BCP-47 tag (e.g. `"es-ES"`, `"es-419"`,
+  `"en-US"`), providing both language and regional variant at runtime. This is the
+  source of truth for theme/badge locale resolution in `ThemeScheduler`.
 
 ---
 

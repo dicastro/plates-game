@@ -32,8 +32,6 @@ Before computing the bonus, the 4-digit string is audited for premium patterns:
 
 ## 3. Platform Submission Flow
 
-- Scores are submitted to a volatile daily leaderboard ID managed by YouTube.
+- Scores are submitted via `ytgame.engagement.sendScore({ value: N })`. YouTube resolves the target leaderboard automatically from the registered game identity — no leaderboard ID is passed by the client.
 - The SDK aggregates daily scores into the player's lifetime historic profile automatically.
-- **No direct leaderboard submission from the client.** A score is only committed after
-  receiving a cryptographic authorization token from the Cloudflare Worker verification endpoint.
-  See `doc/technical/security-anticheat.md` for the full verification flow.
+- **No direct leaderboard submission from the client.** A score is only committed after receiving a cryptographic authorization token from the Cloudflare Worker verification endpoint. See `doc/technical/security-anticheat.md` for the full verification flow.

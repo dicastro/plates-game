@@ -1,10 +1,11 @@
 import { MemoryPlatform } from "./MemoryPlatform";
+import { YouTubePlatform } from "./YoutubePlatform";
 
 export interface PlatformService {
   initialize(): Promise<void>;
-  saveData(key: string, data: unknown): Promise<void>;
-  loadData(key: string): Promise<unknown>;
-  submitScore(leaderboardId: string, value: number): Promise<void>;
+  saveData(data: unknown): Promise<void>;
+  loadData(): Promise<unknown>;
+  submitScore(value: number): Promise<void>;
   getLanguage(): string;
   showRewardedVideoAd(): Promise<boolean>;
   muteAudio(isMuted: boolean): void;
@@ -15,9 +16,10 @@ export interface PlatformService {
 export class PlatformFactory {
   static create(): PlatformService {
     const target = import.meta.env.VITE_PLATFORM_TARGET;
+
     switch (target) {
       case "YOUTUBE":
-        throw new Error("YouTubePlatform not yet implemented.");
+        return new YouTubePlatform();
       case "CLOUDFLARE":
         throw new Error("CloudflarePlatform not yet implemented.");
       case "MEMORY":

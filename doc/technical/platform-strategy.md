@@ -11,9 +11,9 @@ or any YouTube SDK syntax directly.
 | Method | Description |
 |---|---|
 | `initialize(): Promise<void>` | Bootstraps platform context. In production, triggers `ytgame.game.firstLaunchCompleted()` and fetches the canonical UTC timestamp. |
-| `saveData(key, data): Promise<void>` | Persists encrypted state to platform storage. |
-| `loadData(key): Promise<unknown>` | Retrieves and decrypts state from platform storage. |
-| `submitScore(leaderboardId, value): Promise<void>` | Submits a Worker-verified score to the leaderboard. |
+| `saveData(data): Promise<void>` | Persists encrypted state to platform storage as a single blob. |
+| `loadData(): Promise<unknown>` | Retrieves and decrypts state from platform storage. |
+| `submitScore(value): Promise<void>` | Submits a Worker-verified score to the leaderboard. |
 | `getLanguage(): string` | Returns the 2-letter locale code (e.g., `'en'`, `'es'`). |
 | `showRewardedVideoAd(): Promise<boolean>` | Requests a rewarded video ad; resolves `true` if fully watched. |
 | `muteAudio(isMuted: boolean): void` | Delegates to `ProceduralAudioEngine.setMute()`. |
@@ -24,7 +24,7 @@ or any YouTube SDK syntax directly.
 
 ### `MemoryPlatform` (`VITE_PLATFORM_TARGET=MEMORY`)
 - Active during local development.
-- Persistence: `sessionStorage` (volatile, cleared on tab close).
+- Persistence: `sessionStorage` under a fixed internal key `"plates_save"` (volatile, cleared on tab close).
 - Lifecycle events: native Page Visibility API (`visibilitychange`).
 - Dev-only global hooks exposed on `window`:
   - `__SIMULATE_YT_PAUSE__()` — triggers all registered pause callbacks.
@@ -38,9 +38,14 @@ or any YouTube SDK syntax directly.
 - **Status:** not yet implemented.
 
 ### `YouTubePlatform` (`VITE_PLATFORM_TARGET=YOUTUBE`)
-- Active in the final production ZIP bundle.
-- Maps all interface methods directly to `window.ytgame` SDK calls.
-- **Status:** not yet implemented.
+- Active in `yt-local` (dev) and `yt-zip` (production) modes.
+- Requires `window.ytgame` SDK to be present — guards with a warn-and-return if absent.
+- Persistence: `ytgame.game.saveData()` / `loadData()` — single blob, no key namespacing.
+  The `PlatformService` interface enforces the same single-blob constraint on all platforms.
+- Lifecycle: `ytgame.system.onPause` / `onResume`.
+- Score: `ytgame.engagement.sendScore({ value })`.
+- Language: `ytgame.system.getLanguage()` sliced to 2-char locale code.
+- Mandatory call sequence on `initialize()`: `firstFrameReady()` → `gameReady()`.
 
 ## 4. Factory
 
@@ -54,6 +59,6 @@ PlatformFactory.create() // → returns the correct strategy instance
 
 | Variable | Values | Location |
 |---|---|---|
-| `VITE_PLATFORM_TARGET` | `MEMORY` / `CLOUDFLARE` / `YOUTUBE` | `.env.development` / Cloudflare dashboard |
+| `VITE_PLATFORM_TARGET` | `MEMORY` / `CLOUDFLARE` / `YOUTUBE` | `.env.development` / `.env.demo` / `.env.yt-local` / `.env.yt-zip` |
 | `VITE_STORAGE_SALT` | arbitrary secret string | `.env.development` / Cloudflare dashboard (encrypted) |
 | `VITE_DICTIONARY_SALT` | arbitrary secret string | Cloudflare dashboard only — never in repo |

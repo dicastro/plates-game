@@ -44,17 +44,17 @@ export default function App() {
     if (initialized.current) return;
     initialized.current = true;
 
-    platform.onPause(() => audio.setMute(true));
-    platform.onResume(() => audio.setMute(false));
+    platform.initialize().then(() => {
+      platform.onPause(() => audio.setMute(true));
+      platform.onResume(() => audio.setMute(false));
+    });
 
     return () => { audio.stop(); };
   }, []);
 
   function handleStart() {
-    platform.initialize().then(() => {
-      const seed = Math.floor(Math.random() * 0xffffff);
-      audio.start(seed);
-    });
+    const seed = Math.floor(Math.random() * 0xffffff);
+    audio.start(seed);
   }
 
   return (

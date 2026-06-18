@@ -4,6 +4,8 @@ import { seal, unseal, isPersistedEnvelope } from "./crypto/PayloadCrypto";
 const IS_DEV = import.meta.env.DEV;
 
 export class MemoryPlatform implements PlatformService {
+  private static readonly STORAGE_KEY = "plates_save";
+
   private pauseCallbacks: Array<() => void> = [];
   private resumeCallbacks: Array<() => void> = [];
 
@@ -24,41 +26,33 @@ export class MemoryPlatform implements PlatformService {
     }
   }
 
-  async saveData(key: string, data: unknown): Promise<void> {
+  async saveData(data: unknown): Promise<void> {
     const envelope = await seal(data);
-    sessionStorage.setItem(key, JSON.stringify(envelope));
+    sessionStorage.setItem(MemoryPlatform.STORAGE_KEY, JSON.stringify(envelope));
   }
 
-  async loadData(key: string): Promise<unknown> {
-    const raw = sessionStorage.getItem(key);
-    if (!raw) return null;
-
-    let parsed: unknown;
+  async loadData(): Promise<unknown> {
     try {
-      parsed = JSON.parse(raw);
-    } catch {
-      console.error(`[MemoryPlatform] Corrupted JSON at key "${key}". Discarding.`);
-      sessionStorage.removeItem(key);
-      return null;
-    }
+      const raw = sessionStorage.getItem(MemoryPlatform.STORAGE_KEY);
+      if (!raw) return null;
 
-    if (!isPersistedEnvelope(parsed)) {
-      console.error(`[MemoryPlatform] Invalid envelope structure at key "${key}". Possible injection attempt.`);
-      sessionStorage.removeItem(key);
-      return null;
-    }
+      const parsed = JSON.parse(raw);
 
-    try {
+      if (!isPersistedEnvelope(parsed)) {
+        console.error("[MemoryPlatform] Invalid envelope structure. Possible injection attempt.");
+        sessionStorage.removeItem(MemoryPlatform.STORAGE_KEY);
+        return null;
+      }
+
       return await unseal(parsed);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[MemoryPlatform] unseal failed at key "${key}": ${msg}`);
-      sessionStorage.removeItem(key);
+    } catch (error) {
+      console.error("[MemoryPlatform] loadData failed:", error);
+      sessionStorage.removeItem(MemoryPlatform.STORAGE_KEY);
       return null;
     }
   }
 
-  async submitScore(_leaderboardId: string, _value: number): Promise<void> {
+  async submitScore(_value: number): Promise<void> {
     // No-op in MEMORY mode
   }
 

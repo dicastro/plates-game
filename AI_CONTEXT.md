@@ -84,6 +84,13 @@ same React state as the virtual keys for desktop support.
   is required to apply for official inclusion.
 - The YouTube SDK uses `document.hidden` alternatives — the `visibilitychange` event behavior
   inside the iframe differs from standard browser behavior; rely on `ytgame.system.onPause/onResume`.
+- The YouTube SDK (`game_api/v1`) redirects to a versioned file, adding network latency.
+  When served locally, a Vite `type="module"` bundle executes before the SDK resolves the
+  redirect. `main.tsx` polls for `window.ytgame` before mounting React to guard against this.
+  The Test Suite's "SDK loaded before game code" check is a false negative in this local scenario; it does not reflect production behavior where YouTube injects the SDK before any game code.
+- The YouTube SDK exposes a single storage blob (`saveData`/`loadData` with no key). The
+  `PlatformService` interface adopts this constraint across all platforms — all game state is
+  serialized into one envelope. `MemoryPlatform` uses a fixed internal key `"plates_save"`.
 
 ---
 

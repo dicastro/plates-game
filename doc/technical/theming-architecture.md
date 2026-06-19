@@ -206,3 +206,15 @@ Phase 2 — after PlatformService.initialize() resolves:
 1. Create `src/theme/badges/XX.tsx` implementing `LogoBadge` (inline SVG, zero raster).
 2. Add a date/locale condition in `ThemeScheduler` under badge resolution.
 3. No theme change, no CSS vars, no other files touched.
+
+---
+
+## 9. Theme Visual Catalogue
+
+Each implemented theme has a standalone HTML reference file in `doc/themes/`.
+These files render all UI components (palette, typography, buttons, plates, tags,
+inputs, splash animation, overlay) against the theme's actual colors and can be
+opened directly in any browser without a server.
+
+See `doc/themes/README.md` for the full catalogue index and instructions for
+adding new themes.

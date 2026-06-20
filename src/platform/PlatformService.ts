@@ -6,6 +6,9 @@ export interface PlatformService {
   saveData(data: unknown): Promise<void>;
   loadData(): Promise<unknown>;
   submitScore(value: number): Promise<void>;
+  notifyFirstFrameReady(): void;
+  notifyGameReady(): void;
+  archiveFinishedSessions(): Promise<void>;
   getLanguage(): string;
   showRewardedVideoAd(): Promise<boolean>;
   muteAudio(isMuted: boolean): void;

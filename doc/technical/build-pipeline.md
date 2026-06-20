@@ -62,3 +62,17 @@ in the real YouTube environment the SDK is provided by the platform before any g
 |---|---|---|
 | Public review URL | Cloudflare Pages (auto-deploy from `/dist`) | Cloudflare |
 | YouTube Playables | `dist-zip/plates-game.zip` (manual upload) | YouTube Studio |
+
+## 8. Dev-Only Environment Variable Guards
+
+Any environment variable that is safe in development but dangerous if accidentally shipped
+to `demo`/`yt-zip` gets a **build-time guard** in `vite.config.ts` (via `loadEnv()`), not
+just a documentation warning — the build fails loudly rather than relying on developer
+discipline.
+
+| Variable | Dangerous value | Guarded in |
+|---|---|---|
+| `VITE_TIME_STRATEGY` | `FAST_FORWARD` | `demo`, `yt-zip` |
+| `VITE_SPLASH_FORCED_DELAY_MS` | any value `> 0` | `demo`, `yt-zip` |
+
+When adding a new dev-only env var, add a matching guard following this same pattern.

@@ -75,6 +75,16 @@ interface NavigationContextValue {
 
 The provider wraps the entire app in `App.tsx`. All screens consume `useNavigation()`.
 
+### `sessionContext` Stickiness
+
+`navigate(screen, sessionContext?)` treats `sessionContext` as **sticky unless explicitly
+passed**:
+- Omitting the argument preserves the current `sessionContext`.
+- Passing `null` explicitly clears it.
+
+This avoids forcing every `navigate()` call within an active room (e.g. `TRAVEL_RESULT` →
+`TRAVEL_GAME` on the next-round loop) to re-pass an unchanged `sessionContext`.
+
 ---
 
 ## 4. App Shell Render Logic
@@ -128,7 +138,6 @@ src/
 ├── navigation/
 │   ├── types.ts
 │   ├── NavigationContext.tsx
-│   └── useNavigation.ts
 ├── screens/
 │   ├── SplashScreen.tsx
 │   ├── HomeScreen.tsx
@@ -147,6 +156,9 @@ src/
 │       ├── RemoteWaitingScreen.tsx
 │       ├── RemoteResultScreen.tsx
 │       └── RemoteFinalScreen.tsx
+├── components/
+│   ├── PlatesLogo.tsx            ← static plate mark, reusable (HUD, future screens)
+│   └── SplashAnimation.tsx       ← Splash-only: animated reels + tagline + loading dots
 ├── overlays/
 │   ├── SettingsOverlay.tsx
 │   └── WhatsNewOverlay.tsx

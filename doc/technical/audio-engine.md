@@ -48,3 +48,18 @@ The engine is intentionally decoupled from game state. Future extensions may inj
 - BPM acceleration when the round timer is low.
 - Key/instrument shifts based on the active game mode or season.
 - Harmonic chord layers for Travel Mode rooms.
+
+## 7. Settings Persistence & Autoplay Constraint
+
+- `audio.enabled` is a normal persisted player setting, stored in the same `saveData()`
+  envelope as other preferences. Default `false` when no save data exists (first launch).
+- Once a player opts in, the preference persists across sessions via the standard
+  `PlatformService.saveData()`/`loadData()` flow — no special-casing required.
+- Per Playables best practices, the game should expose volume/mute controls (HUD), not a
+  one-time-only consent flow.
+- **Browser autoplay policy** (Chromium/Web Audio API, not a YouTube-specific rule) blocks
+  `AudioContext` playback without a prior user gesture. This means even with
+  `audio.enabled: true` loaded from a save, actual playback cannot start automatically on
+  Splash or Home mount — it starts on the player's first tap/interaction.
+- No ambient/menu audio architecture exists yet (Splash and Home are currently silent).
+  Seed-driven music is only defined for in-game contexts (§2).

@@ -13,9 +13,6 @@ export class YouTubePlatform implements PlatformService {
 
     window.ytgame.system.onPause(() => this.pauseCallbacks.forEach((cb) => cb()));
     window.ytgame.system.onResume(() => this.resumeCallbacks.forEach((cb) => cb()));
-
-    window.ytgame.game.firstFrameReady();
-    window.ytgame.game.gameReady();
   }
 
   async saveData(data: unknown): Promise<void> {
@@ -23,7 +20,7 @@ export class YouTubePlatform implements PlatformService {
 
     // Aplicamos tu capa criptográfica antes de persistir en la nube de Google
     const envelope = await seal(data);
-    
+
     try {
       await window.ytgame.game.saveData(JSON.stringify(envelope));
     } catch (error) {
@@ -55,6 +52,22 @@ export class YouTubePlatform implements PlatformService {
   async submitScore(value: number): Promise<void> {
     if (!window.ytgame) return;
     await window.ytgame.engagement.sendScore({ value: value });
+  }
+
+  notifyFirstFrameReady(): void {
+    if (!window.ytgame) return;
+
+    window.ytgame.game.firstFrameReady();
+  }
+
+  notifyGameReady(): void {
+    if (!window.ytgame) return;
+
+    window.ytgame.game.gameReady();
+  }
+
+  async archiveFinishedSessions(): Promise<void> {
+    // TODO: migrate FINISHED Cloudflare KV sessions into player saveData
   }
 
   getLanguage(): string {

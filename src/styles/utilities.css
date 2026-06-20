@@ -1,1 +1,18 @@
 /* Custom utility classes — add @layer utilities blocks here */
+
+@keyframes plates-spin-0 { 0%,12%{transform:translateY(0)} 72%,100%{transform:translateY(-400px)} }
+@keyframes plates-spin-1 { 0%,12%{transform:translateY(0)} 76%,100%{transform:translateY(-400px)} }
+@keyframes plates-spin-2 { 0%,12%{transform:translateY(0)} 80%,100%{transform:translateY(-400px)} }
+@keyframes plates-spin-3 { 0%,12%{transform:translateY(0)} 84%,100%{transform:translateY(-400px)} }
+@keyframes plates-spin-4 { 0%,12%{transform:translateY(0)} 88%,100%{transform:translateY(-400px)} }
+@keyframes plates-spin-5 { 0%,12%{transform:translateY(0)} 92%,100%{transform:translateY(-400px)} }
+
+.plates-reel-0 { animation: plates-spin-0 4s cubic-bezier(.25,.1,.25,1) infinite; }
+.plates-reel-1 { animation: plates-spin-1 4s cubic-bezier(.25,.1,.25,1) infinite; }
+.plates-reel-2 { animation: plates-spin-2 4s cubic-bezier(.25,.1,.25,1) infinite; }
+.plates-reel-3 { animation: plates-spin-3 4s cubic-bezier(.25,.1,.25,1) infinite; }
+.plates-reel-4 { animation: plates-spin-4 4s cubic-bezier(.25,.1,.25,1) infinite; }
+.plates-reel-5 { animation: plates-spin-5 4s cubic-bezier(.25,.1,.25,1) infinite; }
+
+@keyframes plates-dot-pulse { 0%,80%,100%{opacity:.25;transform:scale(.8)} 40%{opacity:1;transform:scale(1)} }
+.plates-dot { animation: plates-dot-pulse 1.4s ease-in-out infinite; }

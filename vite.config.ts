@@ -1,4 +1,4 @@
-import { defineConfig, type HtmlTagDescriptor } from "vite";
+import { defineConfig, loadEnv, type HtmlTagDescriptor } from "vite";
 import react from "@vitejs/plugin-react";
 import { obfuscator } from "rollup-obfuscator";
 import zipPack from "vite-plugin-zip-pack";
@@ -42,6 +42,17 @@ const OBFUSCATOR_PLUGIN = obfuscator({
 });
 
 export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd());
+
+  if ((mode === "demo" || mode === "yt-zip") && env.VITE_TIME_STRATEGY === "FAST_FORWARD") {
+    throw new Error("FAST_FORWARD time strategy is forbidden in demo/yt-zip builds.");
+  }
+
+  const FORCED_DELAY = Number(env.VITE_SPLASH_FORCED_DELAY_MS ?? 0);
+  if ((mode === "demo" || mode === "yt-zip") && FORCED_DELAY > 0) {
+    throw new Error("VITE_SPLASH_FORCED_DELAY_MS must be 0 (or unset) in demo/yt-zip builds.");
+  }
+
   const withSdk = mode === "yt-local" || mode === "yt-zip";
   const withObfuscation = mode === "demo" || mode === "yt-zip";
   const withZip = mode === "yt-zip";

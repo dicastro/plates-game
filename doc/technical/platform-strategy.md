@@ -11,6 +11,9 @@ or any YouTube SDK syntax directly.
 | Method | Description |
 |---|---|
 | `initialize(): Promise<void>` | Bootstraps platform context. In production, triggers `ytgame.game.firstLaunchCompleted()` and fetches the canonical UTC timestamp. |
+| `notifyFirstFrameReady(): void` | Signals the platform that something is visibly rendered. Owned exclusively by `SplashScreen`, called as early as possible. |
+| `notifyGameReady(): void` | Signals the platform that the game is fully interactive. Owned exclusively by `SplashScreen`, called right before navigating to `HOME`. |
+| `archiveFinishedSessions(): Promise<void>` | Migrates `FINISHED` Travel/Remote KV sessions into player storage. No-op on platforms without KV-backed sessions. |
 | `saveData(data): Promise<void>` | Persists encrypted state to platform storage as a single blob. |
 | `loadData(): Promise<unknown>` | Retrieves and decrypts state from platform storage. |
 | `submitScore(value): Promise<void>` | Submits a Worker-verified score to the leaderboard. |
@@ -45,7 +48,7 @@ or any YouTube SDK syntax directly.
 - Lifecycle: `ytgame.system.onPause` / `onResume`.
 - Score: `ytgame.engagement.sendScore({ value })`.
 - Language: `ytgame.system.getLanguage()` sliced to 2-char locale code.
-- Mandatory call sequence on `initialize()`: `firstFrameReady()` → `gameReady()`.
+- `firstFrameReady()`/`gameReady()` are NOT called inside `initialize()` — they are separate `PlatformService` methods, called explicitly by `SplashScreen` at the correct points in its own sequence (see `doc/functional/screen-map.md` §5).
 
 ## 4. Factory
 

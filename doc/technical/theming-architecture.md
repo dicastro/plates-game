@@ -123,75 +123,25 @@ Adding a new badge = one file + one entry in `ThemeScheduler`. No theme change n
 
 ## 6. ThemeScheduler
 
-Receives the server UTC epoch, the compiled `DICT_TARGET`, and the runtime `localeTag`
-from the SDK. Returns a `ResolvedThemeContext`.
+`ThemeScheduler` is a plain class receiving a `TimeService` via constructor injection —
+testable, no hidden global state. Its `resolve()` method reads the cosmetic date from
+`TimeService.getCosmeticDate()` (local, synchronous, zero network) and returns a
+`ResolvedThemeContext`.
 
-```typescript
-// src/theme/ThemeScheduler.ts
-
-export function resolveTheme(
-  utcEpoch: number,
-  dictTarget: string,  // VITE_DICT_TARGET — "es" | "en" | ...
-  localeTag: string    // ytgame.system.getLanguage() BCP-47 — "es-ES" | "es-419" | "en-US" ...
-): ResolvedThemeContext {
-  const date  = new Date(utcEpoch * 1000); // server-provided — never new Date()
-  const month = date.getUTCMonth() + 1;
-  const day   = date.getUTCDate();
-
-  // ── Theme resolution ────────────────────────────────────────────────────
-  let theme: Theme = defaultTheme;
-
-  const isWinterSeason   = (month === 11 && day >= 25) || month === 12 || (month === 1 && day <= 6);
-  const isHalloweenSeason = (month === 10 && day >= 15) || (month === 11 && day === 1);
-  const isSummerSeason   = month >= 6 && month <= 9;
-
-  if (isWinterSeason)                                theme = winterTheme;
-  else if (isHalloweenSeason && dictTarget === "en") theme = halloweenTheme;
-  else if (isSummerSeason)                           theme = summerTheme;
-
-  // ── Badge resolution (independent of theme) ──────────────────────────
-  const badges: LogoBadge[] = [];
-
-  if (month === 12 && day === 25)                        badges.push(santaHatBadge);
-  if (month === 1  && day === 1)                         badges.push(newYearBadge);
-  if (month === 1  && day === 6 && dictTarget === "es")  badges.push(threeKingsBadge);
-  if (month === 6  && day === 28)                        badges.push(prideBadge);
-  // localeTag enables finer regional rules, e.g.:
-  // if (month === 7 && day === 4 && localeTag === "en-US") badges.push(independenceDayBadge);
-  // Add future badges here — one line each
-
-  return { theme, badges };
-}
-```
-
-`resolveTheme()` is called exactly once in `SplashScreen`, after
-`PlatformService.initialize()` provides the UTC epoch and `getLanguage()` provides
-the BCP-47 locale tag. The `ResolvedThemeContext` is stored in `ThemeProvider` for
-the lifetime of the session.
-
----
+`ThemeScheduler` never receives a server epoch and never awaits anything — theme/badge
+resolution is purely cosmetic and intentionally decoupled from the authoritative game-time
+source used for anti-cheat (see `doc/technical/security-anticheat.md`). Date source:
+`TimeService.getCosmeticDate()` — see `doc/technical/time-service.md`.
 
 ## 7. ThemeProvider & Splash Sequencing
 
-`ThemeProvider` applies each `theme.cssVars` entry via
-`document.documentElement.style.setProperty()` on mount. It exposes
-`ResolvedThemeContext` via `useTheme()`. `<PlatesLogo />` consumes `theme.logoBadge`
-and `badges`, rendering the base theme badge first, then independent badges in
-array order.
+`ThemeProvider` resolves the theme synchronously on mount, before first paint, and applies
+`theme.cssVars` in a way that guarantees zero flash of unstyled content. There is no
+two-phase render — theme resolution has no network dependency, so it completes before
+Splash ever renders its first frame.
 
-The Splash screen renders in two phases to avoid a flash of unstyled content:
-
-```
-Phase 1 — immediate render:
-  Default CSS vars hardcoded in base.css as :root fallback values.
-  Logo + spinner render instantly with default theme.
-
-Phase 2 — after PlatformService.initialize() resolves:
-  ThemeScheduler.resolveTheme(utcEpoch, dictTarget, localeTag)
-  ThemeProvider applies new cssVars to :root.
-  Logo re-renders with active theme and badges.
-  Navigation proceeds to HOME.
-```
+`<PlatesLogo />` and `<SplashAnimation />` consume the resolved theme and badges via
+`useTheme()`.
 
 ---
 

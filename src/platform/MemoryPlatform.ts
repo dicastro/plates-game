@@ -56,6 +56,18 @@ export class MemoryPlatform implements PlatformService {
     // No-op in MEMORY mode
   }
 
+  notifyFirstFrameReady(): void {
+    // No-op in MEMORY mode
+  }
+
+  notifyGameReady(): void {
+    // No-op in MEMORY mode
+  }
+
+  async archiveFinishedSessions(): Promise<void> {
+    // No-op in MEMORY mode — no Travel/Remote sessions exist locally
+  }
+
   getLanguage(): string {
     return navigator.language?.slice(0, 2).toLowerCase() ?? "en";
   }

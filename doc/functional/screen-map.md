@@ -118,22 +118,26 @@ interface NavigationState {
 
 ## 5. Splash Screen Sequence
 
-The `SPLASH` screen is the only screen with a mandatory sequential execution flow.
-It blocks navigation until all steps resolve.
+Theme resolution happens before Splash renders its first frame — purely local and
+synchronous (see `doc/technical/theming-architecture.md`), no network dependency.
 
-```
-1. Render logo + animated loading indicator
-2. PlatformService.initialize()          ← fetches canonical UTC epoch
-3. PlatformService.loadData("settings")  ← restore audio/language preferences
-4. ThemeScheduler.resolve(utcEpoch)      ← select active theme by server date
-5. archive-on-launch check               ← migrate FINISHED KV sessions to player storage
-6. What's New check                      ← compare lastSeenVersion vs APP_VERSION
-7. Navigate to HOME
-   └─ if unread What's New → open WHATS_NEW overlay immediately
-```
+Splash then renders, signals visual presence to the platform, bootstraps the platform,
+restores the player's settings envelope, runs the archive-on-launch check (no-op outside
+KV-capable platforms), and checks for unread What's New content. Once everything resolves,
+it signals the platform as fully interactive and navigates to `HOME` — opening the
+`WHATS_NEW` overlay immediately if there's unread content.
 
-If step 2 fails (network unavailable), the game falls back to `MemoryPlatform`
-behavior and displays a non-blocking offline warning banner.
+**Note on timing:** there is no canonical-UTC-epoch fetch in this sequence. The cosmetic
+date used for theme resolution is local-only. The authoritative UTC epoch used for
+anti-cheat is never fetched preemptively in Splash — it is resolved lazily by the
+Cloudflare Worker at score-submission time. See `doc/technical/security-anticheat.md`.
+
+**Audio:** the Splash is silent. Browser autoplay policy blocks audio playback without a
+prior user gesture, regardless of a player's saved `audio.enabled` preference. No
+ambient/menu audio architecture is defined yet — see `doc/technical/audio-engine.md`.
+
+If platform initialization fails (network unavailable), the game falls back to
+`MemoryPlatform` behavior and displays a non-blocking offline warning banner.
 
 ---
 

@@ -1,5 +1,12 @@
 
 
+## [0.4.0](///compare/v0.3.0...v0.4.0) (2026-06-21)
+
+
+### Features
+
+* **ui:** implement Home screen with shared screen container and button component 425a868
+
 ## [0.3.0](///compare/v0.2.0...v0.3.0) (2026-06-20)
 
 

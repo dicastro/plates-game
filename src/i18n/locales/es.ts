@@ -4,7 +4,11 @@ const es: TranslationSchema = {
   app: {
     title: "PLATES",
     tagline: "El juego de palabras con matrículas",
-    startButton: "Iniciar Juego",
+  },
+  home: {
+    play: "Jugar",
+    friends: "Amigos",
+    leaderboard: "Ranking"
   },
 };
 

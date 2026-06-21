@@ -4,7 +4,11 @@ const en: TranslationSchema = {
   app: {
     title: "PLATES",
     tagline: "The licence plate word game",
-    startButton: "Start Game",
+  },
+  home: {
+    play: "Play",
+    friends: "Friends",
+    leaderboard: "Leaderboard"
   },
 };
 

@@ -2,6 +2,10 @@ export interface TranslationSchema {
   app: {
     title: string;
     tagline: string;
-    startButton: string;
   };
+  home: {
+    play: string;
+    friends: string;
+    leaderboard: string;
+  }
 }

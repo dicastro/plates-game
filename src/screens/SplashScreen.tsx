@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigation } from "../navigation/NavigationContext";
 import { platformService } from "../platform/platformServiceInstance";
 import SplashAnimation from "../components/SplashAnimation";
+import ScreenContainer from "../components/ScreenContainer";
 
 const FORCED_DELAY_MS = Number(import.meta.env.VITE_SPLASH_FORCED_DELAY_MS ?? 0);
 
@@ -35,8 +36,8 @@ export default function SplashScreen() {
   }, [navigate]);
 
   return (
-    <main className="w-screen h-screen flex flex-col items-center justify-center gap-4 bg-[var(--color-bg)] text-[var(--color-text)]">
+    <ScreenContainer className="gap-4 px-6">
       <SplashAnimation />
-    </main>
+    </ScreenContainer>
   );
 }

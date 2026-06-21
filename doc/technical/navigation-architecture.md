@@ -157,6 +157,8 @@ src/
 │       ├── RemoteResultScreen.tsx
 │       └── RemoteFinalScreen.tsx
 ├── components/
+│   ├── ScreenContainer.tsx       ← shared viewport/orientation base for all screens
+│   ├── Button.tsx                ← variants: primary/secondary/danger/ghost, built-in click throttle
 │   ├── PlatesLogo.tsx            ← static plate mark, reusable (HUD, future screens)
 │   └── SplashAnimation.tsx       ← Splash-only: animated reels + tagline + loading dots
 ├── overlays/
@@ -173,12 +175,24 @@ src/
 
 ## 7. Orientation Handling
 
+Screen-level orientation adaptation is centralized in `ScreenContainer`, not per-screen logic.
+
 ```typescript
-// src/hooks/useOrientation.ts
-// Returns "portrait" | "landscape" based on window.screen.orientation
-// or matchMedia("(orientation: landscape)") as fallback.
-// Triggers re-render on change.
+// src/components/ScreenContainer.tsx
+type OrientationLayout = "row-on-landscape" | "always-column";
 ```
 
-Consumed by `GameEngine` and `PersistentHUD` to switch layout axis.
-All other screens use Tailwind `landscape:` responsive prefix for static layout variants.
+- `row-on-landscape` (default): `flex-col landscape:flex-row` — portrait stacks content vertically,
+  landscape arranges it horizontally. Used by `SplashScreen` and `HomeScreen`.
+- `always-column`: forces column layout regardless of orientation — for screens where a
+  horizontal split adds no value (lists, configuration forms).
+
+All common viewport constraints (`w-screen`, `h-[100dvh]`, base background/text color,
+centering) live in `ScreenContainer` exclusively. No screen component repeats them.
+
+`GameEngine`'s virtual keyboard (bottom in portrait, side panel in landscape) has finer-grained
+requirements than a simple two-variant container. When implemented, it will be decided whether
+it extends `ScreenContainer` with a third variant or composes its own layout inside it.
+
+`PersistentHUD` is unaffected — it is rendered by `App.tsx` outside any `ScreenContainer`,
+anchored top-right regardless of orientation (per §9 of `screen-map.md`).

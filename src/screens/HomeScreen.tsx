@@ -1,7 +1,28 @@
+import { useNavigation } from "../navigation/NavigationContext";
+import { useTranslation } from "../i18n/useTranslation";
+import ScreenContainer from "../components/ScreenContainer";
+import PlatesLogo from "../components/PlatesLogo";
+import Button from "../components/Button";
+
 export default function HomeScreen() {
+  const { navigate } = useNavigation();
+  const { t } = useTranslation();
+
   return (
-    <main className="w-screen h-screen flex items-center justify-center bg-[var(--color-bg)] text-[var(--color-text)]">
-      <p className="text-xl font-bold">HOME — TODO</p>
-    </main>
+    <ScreenContainer className="gap-8 landscape:gap-12 px-6">
+      <PlatesLogo />
+
+      <div className="flex flex-col gap-4 w-full max-w-xs">
+        <Button variant="primary" onClick={() => navigate("NORMAL_GAME")}>
+          {t("home.play")}
+        </Button>
+        <Button variant="secondary" onClick={() => navigate("FRIENDS_HUB")}>
+          {t("home.friends")}
+        </Button>
+        <Button variant="ghost" onClick={() => navigate("LEADERBOARD")}>
+          {t("home.leaderboard")}
+        </Button>
+      </div>
+    </ScreenContainer>
   );
 }

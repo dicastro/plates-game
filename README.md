@@ -44,6 +44,13 @@ While running the development environment (`VITE_PLATFORM_TARGET=MEMORY`), you c
 * `__SIMULATE_YT_PAUSE()`: Simulates the YouTube application minimizing or triggering an interruption, instantly engaging audio-muting loops.
 * `__SIMULATE_YT_RESUME()`: Simulates the player returning focus to the active game viewport.
 * Shifting browser tabs will also trigger automatic lifecycle muting via the Page Visibility API.
+* `__SIMULATE_DATE_OFFSET__(days)`: Available when `VITE_TIME_STRATEGY=FAST_FORWARD`. Shifts the cosmetic date used by the Theme system forward by the given number of days, without waiting for the real calendar date. Useful for testing seasonal themes/badges locally.
+
+## ⏱️ Splash Screen Debugging
+
+The Splash screen normally resolves and disappears too fast to visually inspect. Set `VITE_SPLASH_FORCED_DELAY_MS` in `.env.development` to a value in milliseconds (e.g. `3000`) to hold the Splash on screen for that long. Leave unset or `0` for no delay.
+
+Both `VITE_TIME_STRATEGY=FAST_FORWARD` and `VITE_SPLASH_FORCED_DELAY_MS > 0` are blocked at build time in `demo`/`yt-zip` modes — see `doc/technical/build-pipeline.md`.
 
 ---
 

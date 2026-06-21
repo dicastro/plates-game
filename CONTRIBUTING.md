@@ -12,16 +12,22 @@ Format: `type(scope): concise description in imperative mood`
 
 ### Types
 
-| Type | Version bump | Use for |
-|---|---|---|
-| `feat` | minor | New feature or game mode |
-| `fix` | patch | Bug fix |
-| `refactor` | patch | Code restructuring without behavior change |
-| `perf` | patch | Performance improvement |
-| `style` | none | Formatting, whitespace — no logic change |
-| `docs` | none | Documentation only |
-| `chore` | none | Build config, dependency updates, tooling |
-| `revert` | patch | Reverting a previous commit |
+### Types
+
+| Type | Version bump | Use for | Example scenario |
+|---|---|---|---|
+| `feat` | minor | New feature or game mode | Adding Travel Mode, a new screen, a new theme |
+| `fix` | patch | Bug fix | Correcting a wrong comparison in a build guard |
+| `refactor` | patch | Code restructuring without behavior change | Splitting a component, renaming a file for clarity |
+| `perf` | patch | Performance improvement | Reducing bundle size, optimizing a render path |
+| `style` | none | Formatting, whitespace — no logic change | Reformatting, fixing indentation |
+| `docs` | none | Documentation only | Updating `/doc`, README, this file |
+| `chore` | none | Build config, dependency updates, tooling | Editing `vite.config.ts` guards, bumping a devDependency |
+| `revert` | patch | Reverting a previous commit | Undoing a `feat` that broke something |
+
+**Rule of thumb:** if a player would notice the change in gameplay or UI, it's `feat`/`fix`.
+If only a developer would notice (build pipeline, docs, internal restructuring), it's
+`refactor`/`chore`/`docs`/`style` and never bumps the minor version.
 
 ### Scope (optional but recommended)
 

@@ -41,9 +41,9 @@ npm run build
 
 While running the development environment (`VITE_PLATFORM_TARGET=MEMORY`), you can emulate platform-level triggers and lifecycle events directly from your browser's developer console (F12) to audit defensive programming mechanisms:
 
-* `__SIMULATE_YT_PAUSE()`: Simulates the YouTube application minimizing or triggering an interruption, instantly engaging audio-muting loops.
-* `__SIMULATE_YT_RESUME()`: Simulates the player returning focus to the active game viewport.
-* Shifting browser tabs will also trigger automatic lifecycle muting via the Page Visibility API.
+* `__SIMULATE_YT_PAUSE__()`: Simulates the YouTube application minimizing or triggering an interruption, instantly engaging audio-muting loops.
+* `__SIMULATE_YT_RESUME__()`: Simulates the player returning focus to the active game viewport.
+* `__SIMULATE_YT_AUDIO_CHANGE__(enabled: boolean)`: Simulates YouTube's platform-level mute button being toggled (`ytgame.system.onAudioEnabledChange`). Independent from pause/resume — see `doc/technical/audio-engine.md` §6.
 * `__SIMULATE_DATE_OFFSET__(days)`: Available when `VITE_TIME_STRATEGY=FAST_FORWARD`. Shifts the cosmetic date used by the Theme system forward by the given number of days, without waiting for the real calendar date. Useful for testing seasonal themes/badges locally.
 
 ## ⏱️ Splash Screen Debugging

@@ -1,5 +1,12 @@
 
 
+## [0.5.0](///compare/v0.4.0...v0.5.0) (2026-06-22)
+
+
+### Features
+
+* **audio:** add platform-aware audio runtime with pause/mute compliance 899f497
+
 ## [0.4.0](///compare/v0.3.0...v0.4.0) (2026-06-21)
 
 

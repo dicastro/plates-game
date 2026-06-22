@@ -1,5 +1,6 @@
 import type { PlatformService } from "./PlatformService";
 import { seal, unseal, isPersistedEnvelope } from "./crypto/PayloadCrypto";
+import { installDevSimulationHooks } from "./devTools"
 
 const IS_DEV = import.meta.env.DEV;
 
@@ -8,21 +9,24 @@ export class MemoryPlatform implements PlatformService {
 
   private pauseCallbacks: Array<() => void> = [];
   private resumeCallbacks: Array<() => void> = [];
+  private audioChangeCallbacks: Array<(enabled: boolean) => void> = [];
+  // No real platform audio signal exists locally — starts disabled until
+  // __SIMULATE_YT_AUDIO_CHANGE__(true) is invoked from the console.
+  private systemAudioEnabled = false;
 
   async initialize(): Promise<void> {
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        this.pauseCallbacks.forEach((cb) => cb());
-      } else {
-        this.resumeCallbacks.forEach((cb) => cb());
-      }
-    });
-
+    // Per Playables integration requirements, games MUST NOT rely on the Page
+    // Visibility API for pause/resume — only the SDK's onPause/onResume. This
+    // strategy has no real SDK, so it exposes the same contract via debug hooks.
     if (IS_DEV) {
-      (window as unknown as Record<string, unknown>)["__SIMULATE_YT_PAUSE__"] = () =>
-        this.pauseCallbacks.forEach((cb) => cb());
-      (window as unknown as Record<string, unknown>)["__SIMULATE_YT_RESUME__"] = () =>
-        this.resumeCallbacks.forEach((cb) => cb());
+      installDevSimulationHooks({
+        triggerPause: () => this.pauseCallbacks.forEach((cb) => cb()),
+        triggerResume: () => this.resumeCallbacks.forEach((cb) => cb()),
+        triggerAudioChange: (enabled: boolean) => {
+          this.systemAudioEnabled = enabled;
+          this.audioChangeCallbacks.forEach((cb) => cb(enabled));
+        },
+      });
     }
   }
 
@@ -86,5 +90,13 @@ export class MemoryPlatform implements PlatformService {
 
   onResume(callback: () => void): void {
     this.resumeCallbacks.push(callback);
+  }
+
+  isSystemAudioEnabled(): boolean {
+    return this.systemAudioEnabled;
+  }
+
+  onSystemAudioChange(callback: (enabled: boolean) => void): void {
+    this.audioChangeCallbacks.push(callback);
   }
 }

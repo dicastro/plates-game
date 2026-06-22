@@ -72,6 +72,15 @@ Worker. All game timers, seed derivation, and daily resets use this server-provi
 `<input>` elements are forbidden. Physical keyboard events (`keydown`) are mapped to the
 same React state as the virtual keys for desktop support.
 
+### 9. No In-Game Mute Button
+**Problem:** An early HUD design included a music mute/unmute toggle as the primary audio
+control, including a persisted `audio.enabled` preference.
+**Solution:** Official Playables design requirements explicitly recommend against an overall
+in-game mute button. Removed entirely. The persisted preference was removed too — there was
+no real decision left for it to represent, since the only on/off authority is YouTube's own
+mute. Audio is now governed purely by runtime state (`AudioRuntimeContext`) reacting to
+`isSystemAudioEnabled()`/`onSystemAudioChange()`, with no persisted on/off flag at all.
+
 ---
 
 ## Platform Constraints Discovered
@@ -91,10 +100,11 @@ same React state as the virtual keys for desktop support.
 - The YouTube SDK exposes a single storage blob (`saveData`/`loadData` with no key). The
   `PlatformService` interface adopts this constraint across all platforms — all game state is
   serialized into one envelope. `MemoryPlatform` uses a fixed internal key `"plates_save"`.
-- The YouTube SDK prohibits the Page Visibility API in production. `YouTubePlatform`
-  must use exclusively `ytgame.system.onPause` / `ytgame.system.onResume` for lifecycle
-  events. `MemoryPlatform` uses `visibilitychange` as a dev-only approximation — this
-  is correct and intentional.
+- The YouTube SDK prohibits the Page Visibility API entirely — confirmed in the official
+  integration requirements (see `doc/technical/playables-references.md`). `MemoryPlatform`
+  no longer uses `visibilitychange`; it simulates pause/resume/audio-change via
+  `installDevSimulationHooks()` (`src/platform/devTools.ts`), matching the real SDK contract
+  exactly instead of approximating it.
 - `ytgame.engagement.sendScore({ value: N })` accepts a single numeric value with no
   leaderboard selector. The leaderboard is determined by YouTube from the registered
   game identity of the uploaded ZIP.

@@ -45,9 +45,13 @@ Always rendered on top of every screen except `SPLASH`.
 
 | Element | Action |
 |---|---|
-| `🔇 / 🔊` | Instant mute toggle. Updates `ProceduralAudioEngine.setMute()` and persists preference |
 | `⚙️` | Opens `SETTINGS` overlay |
 | `🔔` | Opens `WHATS_NEW` overlay. Shows a badge dot if unread notes exist |
+
+There is intentionally **no mute/unmute button** in the HUD — see
+`doc/technical/audio-engine.md` §5 (Playables design requirement). Audio's only on/off
+authority is YouTube's own platform-level mute. Granular volume (music/SFX) will live inside
+the `SETTINGS` overlay once implemented.
 
 The HUD does **not** include a back-navigation control. Each screen manages its own
 back/exit action contextually.

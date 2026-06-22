@@ -13,9 +13,12 @@
   Linear Congruential Generator (LCG) driven by a numeric **seed**.
 - Given the same seed, the engine produces **identical output** across all devices and sessions.
 - Seed sources by mode:
-  - **Normal Mode:** derived from the UTC day seed.
+  - **Home / menu (ambient):** `HOME_AMBIENT_SEED`, a fixed placeholder constant
+    (`src/audio/audioConstants.ts`). No music-personalization design has been decided
+    yet — this exists only so ambient playback is real audio, not a stub.
+  - **Normal Mode:** derived from the UTC day seed (not yet implemented).
   - **Travel Mode:** the 4-digit Room ID — enabling all players in the same room to hear
-    identical music on their individual devices.
+    identical music on their individual devices (not yet implemented).
 
 ## 3. Public Interface
 
@@ -36,30 +39,78 @@ Exposed by `ProceduralAudioEngine`:
 - **Envelope:** attack 20ms, exponential decay to silence.
 - **Tempo:** `BPM_BASE = 90`, note grid at `0.5 * BEAT_SEC`.
 
-## 5. Lifecycle Integration
+## 5. No In-Game Mute Button — Playables Design Requirement
 
-- `App.tsx` registers `platform.onPause(() => audio.setMute(true))` and
-  `platform.onResume(() => audio.setMute(false))` on mount.
-- `audio.stop()` is called in the `useEffect` cleanup to guarantee disposal on unmount.
+Per the official [Playables integration requirements](https://developers.google.com/youtube/gaming/playables/certification/requirements_integration):
 
-## 6. Evolutionary Scalability
+> Game SHOULD NOT show an overall mute button within the game itself; allow users to rely
+> on the YouTube-level features for this. Game MAY have separate granular audio controls
+> in the game, such as for music and sound effects, but they MUST follow all other audio
+> control requirements.
+
+Consequently, **`PersistentHUD` has no mute/unmute button**. The only audio-related UI will
+be granular volume controls inside the future Settings overlay (music/SFX sliders) — never
+an overall mute toggle. There is no persisted `audio.enabled` preference: the only platform-
+level on/off authority is YouTube's own mute button, surfaced via `isSystemAudioEnabled()` /
+`onSystemAudioChange()` (see §6 and `doc/technical/platform-strategy.md`).
+
+## 6. Runtime Audio State — `AudioRuntimeContext`
+
+`isPlaying` is **runtime-only state, never persisted**. It always starts `false` on every
+load/reload, regardless of any future saved preference, due to the browser autoplay policy
+(`AudioContext` requires a prior user gesture). See `doc/technical/state-architecture.md`
+for the general persisted-vs-runtime pattern this follows.
+
+`AudioRuntimeContext` is the **only** component allowed to call `audioEngine.start()/stop()`.
+It owns compliance with two distinct, independent Playables SDK signals — conflating them
+was an earlier implementation mistake, now corrected:
+
+| Signal | SDK source | Meaning | Effect |
+|---|---|---|---|
+| Pause / Resume | `onPause` / `onResume` | Platform-forced execution pause (ads, app backgrounding, etc.) | Fully stops/restarts the engine, independent of player intent |
+| System audio change | `isSystemAudioEnabled()` / `onSystemAudioChange()` | YouTube/device-level mute | Silences playback without erasing the player's intent — restores exactly what was wanted once unmuted |
+
+Internal state tracked by `AudioRuntimeContext`:
+- `wantsAudioRef` — whether the player has actually requested audio (set by `play()`/`stop()`).
+- `pausedByPlatformRef` — whether a platform-forced pause is currently active.
+- `lastSeedRef` — the seed to resume with once playback is allowed again.
+
+`play(seed)` only starts the engine immediately if not platform-paused and
+`isSystemAudioEnabled()` is `true`; otherwise it records intent and starts later when
+`onResume`/`onSystemAudioChange(true)` fires.
+
+## 7. Triggering Playback — User Gesture Requirement
+
+- Splash and Home mount **silent** — `AudioRuntimeContext` never calls `play()` on mount.
+- The first real trigger in the app is `HomeScreen`'s "Play" button, which calls
+  `useAudio().ensurePlayback()` on click — a confirmed user gesture, valid on any platform
+  including `YOUTUBE`.
+- `useAudio()` (`src/audio/useAudio.ts`) is the only audio entry point UI components use.
+  It currently exposes `{ isPlaying, ensurePlayback }`. It will grow as Settings (volume)
+  and `GameEngine` (mode-specific seeds) are implemented.
+
+## 8. Lifecycle Integration
+
+- `onPause`/`onResume`/`onSystemAudioChange` are registered once inside
+  `AudioRuntimeProvider`, via `PlatformService`. They are multi-subscriber by design (the
+  underlying callback arrays already support multiple listeners) — `PlayerDataContext` also
+  subscribes to `onPause` independently to flush persisted data (see
+  `doc/technical/state-architecture.md`).
+- `audioEngine.stop()` is invoked on platform pause; disposal on component unmount is
+  guaranteed by the engine's own `stop()` implementation.
+
+## 9. Evolutionary Scalability
 
 The engine is intentionally decoupled from game state. Future extensions may inject:
 - BPM acceleration when the round timer is low.
 - Key/instrument shifts based on the active game mode or season.
 - Harmonic chord layers for Travel Mode rooms.
+- Separate music/SFX channels and volume controls (Settings overlay) — see §5.
 
-## 7. Settings Persistence & Autoplay Constraint
+## 10. Device Volume
 
-- `audio.enabled` is a normal persisted player setting, stored in the same `saveData()`
-  envelope as other preferences. Default `false` when no save data exists (first launch).
-- Once a player opts in, the preference persists across sessions via the standard
-  `PlatformService.saveData()`/`loadData()` flow — no special-casing required.
-- Per Playables best practices, the game should expose volume/mute controls (HUD), not a
-  one-time-only consent flow.
-- **Browser autoplay policy** (Chromium/Web Audio API, not a YouTube-specific rule) blocks
-  `AudioContext` playback without a prior user gesture. This means even with
-  `audio.enabled: true` loaded from a save, actual playback cannot start automatically on
-  Splash or Home mount — it starts on the player's first tap/interaction.
-- No ambient/menu audio architecture exists yet (Splash and Home are currently silent).
-  Seed-driven music is only defined for in-game contexts (§2).
+No JavaScript API exists to read the OS/device volume level. Web Audio output already
+passes through the system's audio pipeline, which the OS scales automatically. The
+requirement to "respect the device's main volume control" is satisfied by default — the
+engine must simply avoid any internal gain normalization that would fight it. No code is
+needed for this beyond what already exists.

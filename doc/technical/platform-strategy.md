@@ -22,16 +22,18 @@ or any YouTube SDK syntax directly.
 | `muteAudio(isMuted: boolean): void` | Delegates to `ProceduralAudioEngine.setMute()`. |
 | `onPause(callback): void` | Registers a listener for platform-forced pause events. |
 | `onResume(callback): void` | Registers a listener for platform resume events. |
+| `isSystemAudioEnabled(): boolean` | Current platform-level audio permission (YouTube mute button / device mute). |
+| `onSystemAudioChange(callback): void` | Registers a listener fired when the platform's audio permission changes. |
 
 ## 3. Available Strategies
 
 ### `MemoryPlatform` (`VITE_PLATFORM_TARGET=MEMORY`)
 - Active during local development.
 - Persistence: `sessionStorage` under a fixed internal key `"plates_save"` (volatile, cleared on tab close).
-- Lifecycle events: native Page Visibility API (`visibilitychange`).
-- Dev-only global hooks exposed on `window`:
-  - `__SIMULATE_YT_PAUSE__()` — triggers all registered pause callbacks.
-  - `__SIMULATE_YT_RESUME__()` — triggers all registered resume callbacks.
+- Lifecycle events: **no longer uses the Page Visibility API** (forbidden per Playables integration requirements — see `doc/technical/playables-references.md`). Exposes the same debug-hook contract as the real SDK via `installDevSimulationHooks()` (`src/platform/devTools.ts`), shared with the future `CloudflarePlatform`.
+- Dev-only global hooks exposed on `window` (installed via `installDevSimulationHooks`):
+  - `__SIMULATE_YT_PAUSE__()` / `__SIMULATE_YT_RESUME__()`
+  - `__SIMULATE_YT_AUDIO_CHANGE__(enabled: boolean)`
 - All data is wrapped/unwrapped via `PayloadCrypto` (`seal` / `unseal`) identically to production.
 
 ### `CloudflarePlatform` (`VITE_PLATFORM_TARGET=CLOUDFLARE`)
@@ -39,6 +41,7 @@ or any YouTube SDK syntax directly.
 - Bypasses the YouTube SDK; communicates via HTTP `fetch` with Cloudflare Workers and KV.
 - Simulates remote user profiles and global leaderboards.
 - **Status:** not yet implemented.
+- When implemented, must reuse `installDevSimulationHooks()` (`src/platform/devTools.ts`) for the same reason as `MemoryPlatform`: no real Playables SDK signal exists, so pause/resume/audio-change must be simulated identically.
 
 ### `YouTubePlatform` (`VITE_PLATFORM_TARGET=YOUTUBE`)
 - Active in `yt-local` (dev) and `yt-zip` (production) modes.

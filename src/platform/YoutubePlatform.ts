@@ -91,6 +91,16 @@ export class YouTubePlatform implements PlatformService {
   onResume(callback: () => void): void {
     this.resumeCallbacks.push(callback);
   }
+
+  isSystemAudioEnabled(): boolean {
+    if (!window.ytgame) return true;
+    return window.ytgame.system.isAudioEnabled();
+  }
+
+  onSystemAudioChange(callback: (enabled: boolean) => void): void {
+    if (!window.ytgame) return;
+    window.ytgame.system.onAudioEnabledChange(callback);
+  }
 }
 
 // Extensión global temporal para tipar window.ytgame sin que TypeScript proteste

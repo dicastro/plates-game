@@ -14,6 +14,10 @@ export interface PlatformService {
   muteAudio(isMuted: boolean): void;
   onPause(callback: () => void): void;
   onResume(callback: () => void): void;
+  /** Current system-level audio permission (YouTube mute button / device mute). */
+  isSystemAudioEnabled(): boolean;
+  /** Fires whenever the platform's audio permission changes (mute/unmute at the system level). */
+  onSystemAudioChange(callback: (enabled: boolean) => void): void;
 }
 
 export class PlatformFactory {

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigation } from "../navigation/NavigationContext";
+import { usePlayerData } from "../player/PlayerDataContext";
 import { platformService } from "../platform/platformServiceInstance";
 import SplashAnimation from "../components/SplashAnimation";
 import ScreenContainer from "../components/ScreenContainer";
@@ -12,6 +13,7 @@ function delay(ms: number): Promise<void> {
 
 export default function SplashScreen() {
   const { navigate } = useNavigation();
+  const { load } = usePlayerData();
   const ranOnce = useRef(false);
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export default function SplashScreen() {
 
     (async () => {
       await platformService.initialize();
-      await platformService.loadData(); // restore settings — TODO: apply once SettingsContext exists
+      await load(); // restore settings — TODO: apply once SettingsContext exists
       await platformService.archiveFinishedSessions(); // no-op outside Travel/Remote-capable platforms
       // What's New check — system not yet implemented, treated as "nothing unread" for now.
 

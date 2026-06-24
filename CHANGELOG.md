@@ -1,5 +1,12 @@
 
 
+## [0.6.0](///compare/v0.5.0...v0.6.0) (2026-06-24)
+
+
+### Features
+
+* **platform:** drop YouTube Playables, make Cloudflare the production backend 18ee082
+
 ## [0.5.0](///compare/v0.4.0...v0.5.0) (2026-06-22)
 
 

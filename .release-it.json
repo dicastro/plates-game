@@ -13,6 +13,6 @@
     "publish": false
   },
   "hooks": {
-    "before:init": ["npm run build:demo"]
+    "before:init": ["npm run build"]
   }
 }

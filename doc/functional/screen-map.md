@@ -3,12 +3,9 @@
 ## 1. Design Philosophy
 
 PLATES has no URL-based routing. Navigation is a **React state machine** — a single
-`AppScreen` enum drives which component renders. A hard browser refresh always returns
-to `SPLASH`, which re-runs the SDK initialization sequence. This is intentional and
-required by the YouTube Playables lifecycle.
+`AppScreen` enum drives which component renders. A hard browser refresh always returns to `SPLASH`, which re-runs session validation against the Worker (`PlatformService.initialize()`). This is intentional — there is no other moment where session state is checked.
 
-The game is **audio-off by default**. Sound is a user opt-in, not a default. This
-is set in Settings and persisted to player storage.
+The game is **silent on load by design** — not a persisted preference, since there is zero client-side persistence (see `AI_CONTEXT.md`, decision 7). It is a permanent browser autoplay-policy constraint: `AudioContext` requires a user gesture every load, regardless of any prior toggle. See `doc/technical/audio-engine.md` §5–6.
 
 ---
 
@@ -46,16 +43,13 @@ Always rendered on top of every screen except `SPLASH`.
 
 | Element | Action |
 |---|---|
-| `⚙️` | Opens `SETTINGS` overlay |
-| `🔔` | Opens `WHATS_NEW` overlay. Shows a badge dot if unread notes exist |
+| 🔇/🔊 | Toggles audio mute/unmute (`AudioRuntimeContext`) |
+| ⚙️ | Opens `SETTINGS` overlay |
+| 🔔 | Opens `WHATS_NEW` overlay. Shows a badge dot if unread notes exist |
 
-There is intentionally **no mute/unmute button** in the HUD — see
-`doc/technical/audio-engine.md` §5 (Playables design requirement). Audio's only on/off
-authority is YouTube's own platform-level mute. Granular volume (music/SFX) will live inside
-the `SETTINGS` overlay once implemented.
+Granular volume (music/SFX) will live inside the `SETTINGS` overlay once implemented.
 
-The HUD does **not** include a back-navigation control. Each screen manages its own
-back/exit action contextually.
+The HUD does **not** include a back-navigation control. Each screen manages its own back/exit action contextually.
 
 ---
 
@@ -149,13 +143,9 @@ Central lobby for all multiplayer activity. Replaces separate Travel/Remote entr
 
 ### Sections
 
-**Active Sessions** — sessions in `IN_PROGRESS` or `WAITING` state, sourced from Cloudflare KV.
-Each row shows: mode badge, room code, players joined, time remaining (Remote), current round (Travel).
-Actions: `Resume` → routes to the correct `_GAME` or `_WAITING` screen.
+**Active Sessions** — sessions in `IN_PROGRESS` or `WAITING` state, read from that room's Durable Object.
 
-**Archived Sessions** — sessions in `FINISHED` state, sourced from player `saveData()`.
-Each row shows: mode, date, final rank, own word, score.
-Actions: `View Ranking` → opens `TRAVEL_FINAL` or `REMOTE_FINAL` in read-only mode.
+**Archived Sessions** —  sessions in `FINISHED` state, read from the `finished_rooms` D1 projection (see `doc/technical/worker-architecture.md` §9), never from a Durable Object directly..
 
 **New Session** — two CTAs: `Travel Mode` → `TRAVEL_LOBBY` | `Remote Mode` → `REMOTE_LOBBY`.
 
@@ -204,15 +194,7 @@ appropriate result screen.
 
 ## 9. Orientation & Responsive Contract
 
-YouTube Playables runs on mobile (portrait and landscape) and desktop. Every screen must
-function in both orientations. Design contract:
-
-- Layout is **flex column** in portrait, **flex row** in landscape.
-- The persistent HUD is always anchored to the **top-right corner**, never repositioned.
-- The virtual keyboard (when present) anchors to the **bottom** in portrait,
-  **right side panel** in landscape.
-- No fixed pixel dimensions. All sizing via `vw`, `vh`, `dvh`, and Tailwind responsive prefixes.
-- Touch targets minimum `44×44px` (Apple HIG / WCAG 2.5.5).
+Every supported surface — mobile (portrait and landscape), tablet, desktop, and in-vehicle infotainment displays — must render every screen correctly. Layout is **flex column** in portrait/narrow viewports, **flex row** in landscape/wide viewports.
 
 ---
 

@@ -117,22 +117,7 @@ component and therefore is never unmounted during screen transitions.
 
 ---
 
-## 5. SDK Lifecycle Safety
-
-The YouTube Playables SDK expects `firstFrameReady()` and `gameReady()` to be called
-exactly once per session, during `SPLASH`. If the user hard-refreshes the iframe,
-the `SPLASH` → `HOME` sequence re-runs and re-calls the SDK in the correct order.
-
-No screen component ever calls `PlatformService.initialize()` — that responsibility
-belongs exclusively to `SplashScreen`. This prevents double-initialization on
-internal navigation.
-
-The `PlatformService` singleton is created once at module level in `App.tsx` and passed
-down via Context alongside navigation, preventing re-instantiation across screen transitions.
-
----
-
-## 6. File Structure (Target)
+## 5. File Structure (Target)
 
 ```
 src/
@@ -175,7 +160,7 @@ src/
 
 ---
 
-## 7. Orientation Handling
+## 6. Orientation Handling
 
 Screen-level orientation adaptation is centralized in `ScreenContainer`, not per-screen logic.
 

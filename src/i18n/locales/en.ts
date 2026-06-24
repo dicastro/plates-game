@@ -10,6 +10,12 @@ const en: TranslationSchema = {
     friends: "Friends",
     leaderboard: "Leaderboard"
   },
+  hud: {
+    mute: "Mute",
+    unmute: "Unmute",
+    settingsUnavailable: "Settings (not available yet)",
+    whatsNewUnavailable: "What's new (not available yet)",
+  },
 };
 
 export default en;

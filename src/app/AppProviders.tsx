@@ -1,7 +1,6 @@
-// src/app/AppProviders.tsx
 import type { ReactNode } from "react";
 import { ThemeProvider } from "../theme/ThemeProvider";
-import { PlayerDataProvider } from "../player/PlayerDataContext";
+import { PlayerSessionProvider } from "../player/PlayerSessionContext";
 import { AudioRuntimeProvider } from "../audio/AudioRuntimeContext";
 import { NavigationProvider } from "../navigation/NavigationContext";
 
@@ -14,11 +13,11 @@ import { NavigationProvider } from "../navigation/NavigationContext";
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
-      <PlayerDataProvider>
+      <PlayerSessionProvider>
         <AudioRuntimeProvider>
           <NavigationProvider>{children}</NavigationProvider>
         </AudioRuntimeProvider>
-      </PlayerDataProvider>
+      </PlayerSessionProvider>
     </ThemeProvider>
   );
 }

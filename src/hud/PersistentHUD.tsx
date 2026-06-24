@@ -1,14 +1,26 @@
 import type { ReactNode } from "react";
-import { SettingsGearIcon, BellIcon } from "./icons";
+import { useAudio } from "../audio/useAudio";
+import { useTranslation } from "../i18n/useTranslation";
+import { SettingsGearIcon, BellIcon, SpeakerOnIcon, SpeakerMutedIcon } from "./icons";
 
 export default function PersistentHUD() {
+  const { isMuted, toggleMute } = useAudio();
+  const { t } = useTranslation();
+
   return (
     <div className="fixed top-4 right-4 z-50 flex gap-2">
-      <HUDIconButton ariaLabel="Settings (not available yet)" disabled>
+      <HUDIconButton
+        ariaLabel={isMuted ? t("hud.unmute") : t("hud.mute")}
+        onClick={toggleMute}
+      >
+        {isMuted ? <SpeakerMutedIcon /> : <SpeakerOnIcon />}
+      </HUDIconButton>
+
+      <HUDIconButton ariaLabel={t("hud.settingsUnavailable")} disabled>
         <SettingsGearIcon />
       </HUDIconButton>
 
-      <HUDIconButton ariaLabel="What's new (not available yet)" disabled>
+      <HUDIconButton ariaLabel={t("hud.whatsNewUnavailable")} disabled>
         <BellIcon />
       </HUDIconButton>
     </div>

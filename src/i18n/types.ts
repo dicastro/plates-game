@@ -8,4 +8,10 @@ export interface TranslationSchema {
     friends: string;
     leaderboard: string;
   }
+  hud: {
+    mute: string;
+    unmute: string;
+    settingsUnavailable: string;
+    whatsNewUnavailable: string;
+  };
 }

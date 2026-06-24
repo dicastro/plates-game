@@ -63,9 +63,10 @@ src/i18n/updates/
 1. Create `src/i18n/updates/XX.json` with the same version keys as `en.json`.
 2. No TypeScript changes required — the loader handles missing files gracefully.
 
-## 4. Language Detection Priority (Future)
+## 4. Language Source
 
-When `YouTubePlatform` is active, locale detection should prefer
-`PlatformService.getLanguage()` (maps to `ytgame.system.getLanguage()`) over
-`navigator.language`, as YouTube may override the browser's reported locale.
-This abstraction is already in place via the `PlatformService` interface.
+Interface language is chosen explicitly by the player during first-login onboarding (see
+`doc/technical/worker-architecture.md` §4), defaulting to `navigator.language` only as a
+preselected suggestion, never as a silent decision. The chosen value is stored on the
+player's profile and travels with their account across devices — `useTranslation`'s
+`detectLocale()` is only the fallback used before the player's profile has loaded.

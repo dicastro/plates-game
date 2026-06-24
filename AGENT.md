@@ -61,12 +61,14 @@ The documentation system has **five root files**, one contributor guide, and a `
 | `AGENT.md` | AI only | Operating rules, guardrails, workflow (this file) |
 | `AI_CONTEXT.md` | AI only | Project background, architectural decisions, discovered constraints |
 | `CHANGELOG.md` | Dev | Auto-generated technical changelog via `release-it` |
+| `HISTORY.md` | Dev / Public (optional) | Narrative of the project's major pivots and the reasoning behind each one. Not an architectural source of truth — that lives in `AI_CONTEXT.md`. |
 
 The `/doc` directory holds all granular specifications:
+
 ```
 doc/functional/   ← game-modes, scoring, versioning-changelog, player-updates
-doc/technical/    ← persistence-schema, security-anticheat, audio-engine,
-                     platform-strategy, build-pipeline, i18n-architecture
+doc/technical/    ← security-anticheat, audio-engine, platform-strategy,
+                    build-pipeline, i18n-architecture, worker-architecture
 ```
 
 **Rules:**
@@ -102,20 +104,25 @@ doc/technical/    ← persistence-schema, security-anticheat, audio-engine,
 
 ### 9. Architectural Source of Truth
 - Always read `README.md`, `AI_CONTEXT.md`, `SPECS.md`, and `/doc` before generating.
-- Stack: React 19, TypeScript, Vite, Tailwind CSS.
+- Stack: React 19, TypeScript, Vite, Tailwind CSS, Cloudflare Workers/Durable Objects/D1.
 
 ### 10. Platform Isolation
-- Zero `window.ytgame` references outside of `YouTubePlatform`.
-- All platform interactions go through `PlatformService` / `PlatformFactory`.
-- `MemoryPlatform` uses `sessionStorage` + Page Visibility API + dev window hooks.
+- Zero direct references to backend calls (`fetch` against the Worker, session/auth
+  handling) outside `CloudflarePlatform`.
+- All backend interactions go through `PlatformService` / `PlatformFactory`.
+- `MemoryPlatform` mocks the same interface with hardcoded local data (plates, a small
+  built-in dictionary, a mock authenticated player) — no real network calls, no persistence
+  of any kind. State resets on every reload, by design.
 
 ### 11. No External UI/State Libraries
 - No Redux, Zustand, i18next, or heavy UI libraries.
 - Use React Hooks, Context, and native Tailwind CSS.
 
 ### 12. Security & Temporal Anti-Cheat
-- Never expose plaintext dictionary words in the bundle.
-- Never use `new Date()` for game timing — server-provided UTC epoch only.
+- The dictionary, the daily plate sequence, word validation, and scoring live exclusively
+  in the Cloudflare Worker — never in client-shipped code, hashed or otherwise.
+- Never use `new Date()` for game timing — the Worker is the sole authority on "what day it
+  is" for any game-logic purpose.
 - See `doc/technical/security-anticheat.md` for full details.
 
 ### 13. Asset Restrictions
@@ -123,7 +130,7 @@ doc/technical/    ← persistence-schema, security-anticheat, audio-engine,
 - **Zero-Audio-File Policy:** No MP3/WAV/OGG. Audio via Web Audio API only.
 - `AudioContext` must be disposed on component unmount.
 - All interactive buttons must be throttled (timestamp-based) or `disabled`-state locked.
-- `index.html`: `user-scalable=no`. Global CSS: `overscroll-behavior: none`.
+- `index.html`: `user-scalable=no` (no pinch-to-zoom). Global CSS: `overscroll-behavior: none`.
 
 ### 14. Tonality
 - Extremely concise, direct, and highly technical. No conversational filler.
@@ -136,5 +143,4 @@ Full rules in `doc/functional/versioning-changelog.md` and `CONTRIBUTING.md`.
 
 - Format: `major.minor.patch`
 - Pre-1.0.0: new feature/refactor → minor bump (`0.X.0`); fix → patch; docs-only → no bump.
-- `SCHEMA_VERSION` frozen at `1` until `1.0.0` — breaking schema changes discard data silently.
 - Automated via `release-it` + `@release-it/conventional-changelog`.

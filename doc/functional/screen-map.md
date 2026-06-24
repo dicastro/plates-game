@@ -17,6 +17,7 @@ is set in Settings and persisted to player storage.
 | ID | Screen | Description |
 |---|---|---|
 | `SPLASH` | Splash | SDK init, asset preload, theme resolution, archive-on-launch |
+| `LOGIN` | Login | OAuth provider selection (Google initially). Reached from `SPLASH` when no valid session exists. |
 | `HOME` | Home / Main Menu | Mode selection hub, persistent HUD visible |
 | `SETTINGS` | Settings Overlay | Audio, language. Rendered as overlay — does not interrupt game state |
 | `WHATS_NEW` | What's New Overlay | Release notes modal. Shown automatically post-update, accessible on demand |
@@ -65,6 +66,7 @@ back/exit action contextually.
 ```typescript
 export type AppScreen =
   | "SPLASH"
+  | "LOGIN"
   | "HOME"
   | "SETTINGS"          // overlay — stacks over current screen
   | "WHATS_NEW"         // overlay — stacks over current screen
@@ -125,11 +127,7 @@ interface NavigationState {
 Theme resolution happens before Splash renders its first frame — purely local and
 synchronous (see `doc/technical/theming-architecture.md`), no network dependency.
 
-Splash then renders, signals visual presence to the platform, bootstraps the platform,
-restores the player's settings envelope, runs the archive-on-launch check (no-op outside
-KV-capable platforms), and checks for unread What's New content. Once everything resolves,
-it signals the platform as fully interactive and navigates to `HOME` — opening the
-`WHATS_NEW` overlay immediately if there's unread content.
+Splash resolves the session via `PlatformService.initialize()`. If a valid session exists, it navigates to `HOME`; otherwise it navigates to `LOGIN`. The What's New check (unread content opening the `WHATS_NEW` overlay) is not yet implemented — to be wired once that system exists.
 
 **Note on timing:** there is no canonical-UTC-epoch fetch in this sequence. The cosmetic
 date used for theme resolution is local-only. The authoritative UTC epoch used for

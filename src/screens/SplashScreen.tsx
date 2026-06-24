@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigation } from "../navigation/NavigationContext";
-import { usePlayerData } from "../player/PlayerDataContext";
-import { platformService } from "../platform/platformServiceInstance";
+import { usePlayerSession } from "../player/PlayerSessionContext";
 import SplashAnimation from "../components/SplashAnimation";
 import ScreenContainer from "../components/ScreenContainer";
 
@@ -13,29 +12,20 @@ function delay(ms: number): Promise<void> {
 
 export default function SplashScreen() {
   const { navigate } = useNavigation();
-  const { load } = usePlayerData();
+  const { initialize } = usePlayerSession();
   const ranOnce = useRef(false);
 
   useEffect(() => {
     if (ranOnce.current) return;
     ranOnce.current = true;
 
-    // Theme is already resolved synchronously by ThemeProvider before this renders.
-    // Signal visual presence to the platform as early as possible.
-    platformService.notifyFirstFrameReady();
-
     (async () => {
-      await platformService.initialize();
-      await load(); // restore settings — TODO: apply once SettingsContext exists
-      await platformService.archiveFinishedSessions(); // no-op outside Travel/Remote-capable platforms
-      // What's New check — system not yet implemented, treated as "nothing unread" for now.
-
+      const profile = await initialize();
       await delay(FORCED_DELAY_MS);
 
-      platformService.notifyGameReady();
-      navigate("HOME");
+      navigate(profile ? "HOME" : "LOGIN");
     })();
-  }, [navigate]);
+  }, [navigate, initialize]);
 
   return (
     <ScreenContainer className="gap-4 px-6">

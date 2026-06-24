@@ -20,10 +20,10 @@ doc/
 │   ├── versioning-changelog.md    ← Version bump rules, release toolchain
 │   └── player-updates.md         ← What's New system for players (multi-language)
 └── technical/
-    ├── persistence-schema.md      ← Envelope format, schema versioning, migrations
     ├── security-anticheat.md      ← Dictionary validation, temporal anti-cheat, edge verdict
     ├── audio-engine.md            ← Procedural synthesis, PRNG, lifecycle
     ├── platform-strategy.md       ← PlatformService interface, strategies, env vars
+    ├── worker-architecture.md     ← Worker endpoints, Durable Objects/D1 model, OAuth flow, KV-less storage strategy
     ├── build-pipeline.md          ← Vite config, obfuscation, ZIP packaging
     └── i18n-architecture.md       ← UI strings layer, player updates layer, locale detection
 ```
@@ -58,14 +58,12 @@ All numerical constants are defined here for easy tuning.
 | `TRAVEL_COUNTDOWN_SECONDS` | `60` | Per-round countdown timer |
 | `TRAVEL_ATTEMPTS_LIMIT` | `1` | Attempts per round |
 | `TRAVEL_LOBBY_TIMEOUT_SECONDS` | `300` | Room auto-disposal if unfilled (5 min) |
-| `TRAVEL_KV_TTL_SECONDS` | `10800` | Cloudflare KV TTL (3 hours) |
 
 ### 1.4 Remote Mode
 | Constant | Value | Description |
 |---|---|---|
 | `REMOTE_TIME_WINDOW_HOURS` | `24` | Hours for friends to submit scores |
 | `REMOTE_ATTEMPTS_LIMIT` | `1` | Attempts per player |
-| `REMOTE_KV_TTL_SECONDS` | `172800` | Cloudflare KV TTL (48 hours) |
 
 ---
 
@@ -80,17 +78,3 @@ All numerical constants are defined here for easy tuning.
 | Platform Abstraction | Strategy Pattern (`PlatformService`) |
 | Audio | Web Audio API (procedural synthesis) |
 | Graphics | Inline SVG + Tailwind (zero raster assets) |
-
----
-
-## 3. YouTube Playables Compliance
-
-| Requirement | Implementation |
-|---|---|
-| Bundle < 2MB (hard cap 5–10MB) | Zero raster assets; inline SVG; no external fonts |
-| Responsive fluid layout | `w-screen h-screen overflow-hidden` root; orientation-safe |
-| No pinch-to-zoom | `user-scalable=no` in `index.html` viewport meta |
-| No elastic scroll | `overscroll-behavior: none` on `html, body` |
-| Hybrid input (touch + pointer) | Custom virtual keyboard; no native `<input>` overlays |
-| Audio lifecycle | `muteAudio()` on `onPause`; `AudioContext` disposed on unmount |
-| No localStorage / IndexedDB | All persistence via `PlatformService.saveData()` only |

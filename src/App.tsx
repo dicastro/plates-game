@@ -2,6 +2,7 @@ import { useNavigation } from "./navigation/NavigationContext";
 import { AppProviders } from "./app/AppProviders";
 import PersistentHUD from "./hud/PersistentHUD";
 import SplashScreen from "./screens/SplashScreen";
+import LoginScreen from "./screens/LoginScreen";
 import HomeScreen from "./screens/HomeScreen";
 
 function AppShell() {
@@ -11,6 +12,8 @@ function AppShell() {
     switch (state.screen) {
       case "SPLASH":
         return <SplashScreen />;
+      case "LOGIN":
+        return <LoginScreen />;
       case "HOME":
         return <HomeScreen />;
       default:
@@ -21,7 +24,7 @@ function AppShell() {
   return (
     <>
       {screen}
-      {state.screen !== "SPLASH" && <PersistentHUD />}
+      {state.screen !== "SPLASH" && state.screen !== "LOGIN" && <PersistentHUD />}
     </>
   );
 }

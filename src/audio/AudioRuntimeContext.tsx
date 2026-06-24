@@ -4,21 +4,21 @@ import { platformService } from "../platform/platformServiceInstance";
 
 /**
  * Runtime-only audio state. NEVER persisted — isPlaying always resets to
- * false on reload regardless of the player's saved preference, due to the
+ * false on reload regardless of the player's last HUD toggle, due to the
  * browser autoplay policy (AudioContext requires a prior user gesture).
  *
- * This context is the ONLY place that calls audioEngine.start()/stop(). It
- * also owns compliance with two distinct Playables SDK signals:
- *  - onPause/onResume: platform-forced execution pause — fully stops/restarts
- *    the engine, independent of the player's own intent.
- *  - onSystemAudioChange: YouTube/device-level mute — silences playback but
- *    never overrides what the player actually wanted once audio is re-enabled.
+ * This context is the ONLY place that calls audioEngine.start()/stop()/setMute().
+ * It also owns the mute toggle exposed in the persistent HUD, and reacts to
+ * tab visibility (PlatformService.onPause/onResume, backed by the Page
+ * Visibility API) to stop/resume playback when the tab is backgrounded.
  *
  * UI components never touch audioEngine or this context directly — they go
  * through useAudio() (see useAudio.ts).
  */
 interface AudioRuntimeContextValue {
   isPlaying: boolean;
+  isMuted: boolean;
+  toggleMute: () => void;
   play: (seed: number) => void;
   stop: () => void;
 }
@@ -27,20 +27,17 @@ const AudioRuntimeContext = createContext<AudioRuntimeContextValue | null>(null)
 
 export function AudioRuntimeProvider({ children }: { children: ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
-  // Player's actual intent — independent of forced platform pause/mute.
   const wantsAudioRef = useRef(false);
-  const pausedByPlatformRef = useRef(false);
+  const pausedByVisibilityRef = useRef(false);
   const lastSeedRef = useRef<number | null>(null);
 
   function play(seed: number) {
     wantsAudioRef.current = true;
     lastSeedRef.current = seed;
 
-    if (pausedByPlatformRef.current || !platformService.isSystemAudioEnabled()) {
-      // Will start once the platform allows it (see onResume / onSystemAudioChange below).
-      return;
-    }
+    if (pausedByVisibilityRef.current) return;
 
     audioEngine.start(seed);
     setIsPlaying(true);
@@ -52,30 +49,22 @@ export function AudioRuntimeProvider({ children }: { children: ReactNode }) {
     setIsPlaying(false);
   }
 
+  function toggleMute() {
+    const next = !isMuted;
+    setIsMuted(next);
+    audioEngine.setMute(next);
+  }
+
   useEffect(() => {
     platformService.onPause(() => {
-      pausedByPlatformRef.current = true;
+      pausedByVisibilityRef.current = true;
       audioEngine.stop();
       setIsPlaying(false);
     });
 
     platformService.onResume(() => {
-      pausedByPlatformRef.current = false;
-      if (wantsAudioRef.current && lastSeedRef.current !== null && platformService.isSystemAudioEnabled()) {
-        audioEngine.start(lastSeedRef.current);
-        setIsPlaying(true);
-      }
-    });
-
-    platformService.onSystemAudioChange((enabled) => {
-      if (!enabled) {
-        audioEngine.stop();
-        setIsPlaying(false);
-        return;
-      }
-      // Restore exactly what the player wanted before — never force playback
-      // that wasn't already the player's intent.
-      if (wantsAudioRef.current && !pausedByPlatformRef.current && lastSeedRef.current !== null) {
+      pausedByVisibilityRef.current = false;
+      if (wantsAudioRef.current && lastSeedRef.current !== null) {
         audioEngine.start(lastSeedRef.current);
         setIsPlaying(true);
       }
@@ -83,7 +72,7 @@ export function AudioRuntimeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AudioRuntimeContext.Provider value={{ isPlaying, play, stop }}>
+    <AudioRuntimeContext.Provider value={{ isPlaying, isMuted, toggleMute, play, stop }}>
       {children}
     </AudioRuntimeContext.Provider>
   );

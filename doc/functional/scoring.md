@@ -1,28 +1,33 @@
 # Scoring & Leaderboard Specification
 
-## 1. Inverse Scoring Formula
+## 1. Where Scoring Happens
 
-YouTube Playables leaderboards rank scores in **ascending** order by default.
-To map shorter words (better performance) to higher leaderboard positions, scores are inverted:
+All scoring is computed by the Worker, never by the client — see
+`doc/technical/security-anticheat.md` §5. The client only renders whatever the Worker returns
+for a given attempt; it never calculates or asserts a score itself.
+
+## 2. Inverse Length Formula
 
 ```
-Final Score = (PLATE_SCORING_BASE_SCORE - Word_Length) + Plate_Bonus
+Attempt Score = (PLATE_SCORING_BASE_SCORE - Word_Length) + Plate_Bonus
 ```
 
 - `PLATE_SCORING_BASE_SCORE`: `100`
 - A 3-letter word scores higher than a 10-letter word.
-- Failed sessions (no valid word found) submit a score of `0`.
+- An attempt that fails dictionary validation scores `0` and does not affect
+  `bestScoreToday` (see §4).
 
-## 2. Plate Digit Bonus
+## 3. Plate Digit Bonus
 
-The 4 digits of the license plate act as a dynamic score modifier.
+The 4 digits of the day's plate act as a score modifier, computed once per day by the Worker
+when resolving that day's puzzle.
 
-### 2.1 Sum Base Bonus
+### 3.1 Sum Base Bonus
 - Sum all 4 digits.
-- If `PLATE_NUMERIC_BONUS_ENABLED` is `true`, multiply by `PLATE_NUMERIC_BONUS_MULTIPLIER` and add to score.
+- If `PLATE_NUMERIC_BONUS_ENABLED` is `true`, multiply by `PLATE_NUMERIC_BONUS_MULTIPLIER` and
+  add to the attempt score.
 
-### 2.2 Jackpot Pattern Detection
-Before computing the bonus, the 4-digit string is audited for premium patterns:
+### 3.2 Jackpot Pattern Detection
 
 | Pattern | Example | Trigger |
 |---|---|---|
@@ -30,8 +35,22 @@ Before computing the bonus, the 4-digit string is audited for premium patterns:
 | Perfect Pairs | `2244`, `1188` | `PLATE_JACKPOT_PATTERN_MULTIPLIER` (×2.0) |
 | Trio / Quartet | `7772`, `0000` | `PLATE_JACKPOT_PATTERN_MULTIPLIER` (×2.0) |
 
-## 3. Platform Submission Flow
+## 4. Daily Consolidation — `normalModeScore`
 
-- Scores are submitted via `ytgame.engagement.sendScore({ value: N })`. YouTube resolves the target leaderboard automatically from the registered game identity — no leaderboard ID is passed by the client.
-- The SDK aggregates daily scores into the player's lifetime historic profile automatically.
-- **No direct leaderboard submission from the client.** A score is only committed after receiving a cryptographic authorization token from the Cloudflare Worker verification endpoint. See `doc/technical/security-anticheat.md` for the full verification flow.
+A day's best valid attempt is tracked as `bestScoreToday` on the player's Durable Object,
+updated each time a new attempt scores higher than the current value. `bestScoreToday` is
+**provisional** until the day closes (`attemptsUsedToday` reaches `DAILY_ATTEMPTS_LIMIT`), at
+which point it is added once to `normalModeScore` and reset for the next day. Only the single
+best word found across a given day's attempts ever contributes to the cumulative total — see
+`doc/technical/security-anticheat.md` §6.
+
+`normalModeScore` only ever increases. A day where no valid word was found contributes `0` —
+the cumulative total is simply left unchanged, never reset or reduced.
+
+## 5. Leaderboard Scope
+
+`normalModeScore` is scoped per dictionary/plate language (`lang`), never mixed across
+languages, and never scoped by the player's interface language — see
+`doc/technical/worker-architecture.md` §6. Travel Mode and Remote Mode have their own
+independent, room-scoped rankings (see `doc/functional/game-modes.md`) and do not contribute
+to `normalModeScore`.

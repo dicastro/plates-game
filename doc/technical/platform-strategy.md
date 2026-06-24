@@ -2,62 +2,50 @@
 
 ## 1. Principle
 
-All platform-specific capabilities are abstracted behind a single `PlatformService` interface.
-React components, hooks, and styles are **strictly prohibited** from referencing `window.ytgame`
-or any YouTube SDK syntax directly.
+All backend interactions are abstracted behind a single `PlatformService` interface. React
+components, hooks, and styles never call `fetch()` against the Worker, handle cookies, or
+know anything about Cloudflare directly — they only call `PlatformService` methods.
 
 ## 2. `PlatformService` Interface
 
 | Method | Description |
 |---|---|
-| `initialize(): Promise<void>` | Bootstraps platform context. In production, triggers `ytgame.game.firstLaunchCompleted()` and fetches the canonical UTC timestamp. |
-| `notifyFirstFrameReady(): void` | Signals the platform that something is visibly rendered. Owned exclusively by `SplashScreen`, called as early as possible. |
-| `notifyGameReady(): void` | Signals the platform that the game is fully interactive. Owned exclusively by `SplashScreen`, called right before navigating to `HOME`. |
-| `archiveFinishedSessions(): Promise<void>` | Migrates `FINISHED` Travel/Remote KV sessions into player storage. No-op on platforms without KV-backed sessions. |
-| `saveData(data): Promise<void>` | Persists encrypted state to platform storage as a single blob. |
-| `loadData(): Promise<unknown>` | Retrieves and decrypts state from platform storage. |
-| `submitScore(value): Promise<void>` | Submits a Worker-verified score to the leaderboard. |
-| `getLanguage(): string` | Returns the 2-letter locale code (e.g., `'en'`, `'es'`). |
-| `showRewardedVideoAd(): Promise<boolean>` | Requests a rewarded video ad; resolves `true` if fully watched. |
-| `muteAudio(isMuted: boolean): void` | Delegates to `ProceduralAudioEngine.setMute()`. |
-| `onPause(callback): void` | Registers a listener for platform-forced pause events. |
-| `onResume(callback): void` | Registers a listener for platform resume events. |
-| `isSystemAudioEnabled(): boolean` | Current platform-level audio permission (YouTube mute button / device mute). |
-| `onSystemAudioChange(callback): void` | Registers a listener fired when the platform's audio permission changes. |
+| `initialize(): Promise<PlayerProfile \| null>` | Checks for an existing valid session and returns the player's profile if found, null otherwise — the caller decides what to do (e.g. show the login screen). No separate session-getter method exists; this is the single entry point. |
+| `login(provider: AuthProviderId): Promise<void>` | Starts the OAuth full-page redirect flow for the given provider. |
+| `logout(): Promise<void>` | Clears the Worker-issued session. |
+| `enterNormalMode(lang: string): Promise<NormalModeStatus>` | Authoritative read: today's puzzle + the player's current attempts/score/streak for `lang`. No state is written by this call. |
+| `submitAttempt(lang: string, word: string): Promise<AttemptResult>` | Submits a structurally-valid attempt (client already checked consonant order/count before calling this). The Worker validates against the dictionary, scores, and updates the player's Durable Object. |
+| `onPause(callback): void` / `onResume(callback): void` | Standard Page Visibility API wiring (tab backgrounded/foregrounded). |
+| `showRewardedAd(): Promise<boolean>` | Delegates to the active `AdProvider`; resolves `true` if the player completed the rewarded flow. |
+
+`PlayerProfile`, `NormalModeStatus`, and `AttemptResult` shapes are defined in
+`doc/technical/worker-architecture.md`, not duplicated here — this document describes the
+abstraction, not the wire format.
 
 ## 3. Available Strategies
 
 ### `MemoryPlatform` (`VITE_PLATFORM_TARGET=MEMORY`)
 - Active during local development.
-- Persistence: `sessionStorage` under a fixed internal key `"plates_save"` (volatile, cleared on tab close).
-- Lifecycle events: **no longer uses the Page Visibility API** (forbidden per Playables integration requirements — see `doc/technical/playables-references.md`). Exposes the same debug-hook contract as the real SDK via `installDevSimulationHooks()` (`src/platform/devTools.ts`), shared with the future `CloudflarePlatform`.
-- Dev-only global hooks exposed on `window` (installed via `installDevSimulationHooks`):
-  - `__SIMULATE_YT_PAUSE__()` / `__SIMULATE_YT_RESUME__()`
-  - `__SIMULATE_YT_AUDIO_CHANGE__(enabled: boolean)`
-- All data is wrapped/unwrapped via `PayloadCrypto` (`seal` / `unseal`) identically to production.
+- No real network calls, no persistence of any kind — every method operates on hardcoded
+  in-memory data (a small fixed dictionary, a short fixed plate sequence, a mock authenticated
+  player). State resets on every reload, by design.
+- `login()` is a no-op that immediately resolves into the mock player — there is no real
+  OAuth round-trip to simulate locally.
 
 ### `CloudflarePlatform` (`VITE_PLATFORM_TARGET=CLOUDFLARE`)
-- Active for the public web review URL required by Google for YouTube Playables submission.
-- Bypasses the YouTube SDK; communicates via HTTP `fetch` with Cloudflare Workers and KV.
-- Simulates remote user profiles and global leaderboards.
-- **Status:** not yet implemented.
-- When implemented, must reuse `installDevSimulationHooks()` (`src/platform/devTools.ts`) for the same reason as `MemoryPlatform`: no real Playables SDK signal exists, so pause/resume/audio-change must be simulated identically.
-
-### `YouTubePlatform` (`VITE_PLATFORM_TARGET=YOUTUBE`)
-- Active in `yt-local` (dev) and `yt-zip` (production) modes.
-- Requires `window.ytgame` SDK to be present — guards with a warn-and-return if absent.
-- Persistence: `ytgame.game.saveData()` / `loadData()` — single blob, no key namespacing.
-  The `PlatformService` interface enforces the same single-blob constraint on all platforms.
-- Lifecycle: `ytgame.system.onPause` / `onResume`.
-- Score: `ytgame.engagement.sendScore({ value })`.
-- Language: `ytgame.system.getLanguage()` sliced to 2-char locale code.
-- `firstFrameReady()`/`gameReady()` are NOT called inside `initialize()` — they are separate `PlatformService` methods, called explicitly by `SplashScreen` at the correct points in its own sequence (see `doc/functional/screen-map.md` §5).
+- The **only production strategy** — Cloudflare is no longer a secondary/demo target (see
+  `AI_CONTEXT.md`).
+- Communicates with the Cloudflare Worker over HTTPS. Session is a Worker-issued
+  `httpOnly`/`Secure` cookie; the client never reads, stores, or transmits any token
+  directly — the browser handles this automatically on every request.
+- All game-authority methods (`enterNormalMode`, `submitAttempt`) are pure request/response —
+  the client never asserts its own state, only sends actions.
 
 ## 4. Factory
 
 ```typescript
 // src/platform/PlatformService.ts
-const target = import.meta.env.VITE_PLATFORM_TARGET; // 'MEMORY' | 'CLOUDFLARE' | 'YOUTUBE'
+const target = import.meta.env.VITE_PLATFORM_TARGET; // 'MEMORY' | 'CLOUDFLARE'
 PlatformFactory.create() // → returns the correct strategy instance
 ```
 
@@ -65,7 +53,9 @@ PlatformFactory.create() // → returns the correct strategy instance
 
 | Variable | Values | Location |
 |---|---|---|
-| `VITE_PLATFORM_TARGET` | `MEMORY` / `CLOUDFLARE` / `YOUTUBE` | `.env.development` / `.env.demo` / `.env.yt-local` / `.env.yt-zip` |
-| VITE_DICT_TARGET | `es` / `en` / `fr` / ... | `.env.development` / `.env.demo` / `.env.yt-local` / `.env.yt-zip` |
-| `VITE_STORAGE_SALT` | arbitrary secret string | `.env.development` / Cloudflare dashboard (encrypted) |
-| `VITE_DICTIONARY_SALT` | arbitrary secret string | Cloudflare dashboard only — never in repo |
+| `VITE_PLATFORM_TARGET` | `MEMORY` / `CLOUDFLARE` | `.env.development` / `.env.production` |
+| `VITE_DICT_TARGET` | `es` / `en` / ... | `.env.development` / `.env.production` |
+| `VITE_WORKER_BASE_URL` | the Worker's own domain (environment-specific) | `.env.cf-staging` / `.env.production` |
+
+Worker-side secrets (OAuth client secret, D1/DO bindings) are Cloudflare-managed and never
+appear in any client-side `.env*` file — see `doc/technical/worker-architecture.md`.

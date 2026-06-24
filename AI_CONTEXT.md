@@ -7,116 +7,266 @@ and **why** key decisions were made. Operating rules and guardrails are in `AGEN
 
 ## Project Background
 
-**PLATES** is a lightweight HTML5 word puzzle game built for the **YouTube Playables** platform.
+**PLATES** is a lightweight HTML5 word puzzle game, served as a standalone web application
+hosted on Cloudflare. Players are given 3 consonants extracted from a license plate and must
+find the **shortest valid word** that contains all three, in order. Shorter words score
+higher (inverse scoring formula). Scores accumulate across days into a persistent leaderboard
+per player — see `doc/functional/scoring.md`.
 
 The developer is a Senior Java Backend Engineer — frontend layout, SVG graphics, and
 client-side mathematics are heavily AI-assisted.
 
-### Core Mechanic
-Players are given 3 consonants extracted from a license plate and must find the **shortest
-valid word** that contains all three. Shorter words score higher (inverse scoring formula).
-
 ### Target Platform
-YouTube Playables — an iframe-sandboxed HTML5 game runtime inside the YouTube app.
-Strict constraints apply: bundle size, CSP, storage APIs, and input handling.
 
+Cloudflare is the **production platform**, not a staging/demo target. The game is a normal
+authenticated web application: Cloudflare Pages (static hosting) + Cloudflare Workers (edge
+compute, OAuth, game logic authority) + Durable Objects (per-player and per-room state) +
+D1 (queryable leaderboard projection).
+
+### Multi-Language Distribution
+
+The game ships as **one independent build per dictionary language** (starting with Spanish,
+`es`; English, `en`, planned for a later phase). Each language build has its own domain/route,
+its own dictionary, its own daily plate sequence, and its **own independent leaderboard** —
+rankings are never mixed across languages. A single Worker deployment serves all language
+variants, parametrized by an explicit `lang` value on every request; adding a new language
+means adding new bundled data and a new D1/Durable Object binding set, not new Worker code.
+
+
+Each language build has its own domain/route, its own dictionary, its own daily plate sequence, and its own independent leaderboard — rankings are never mixed across languages. The leaderboard is scoped by the dictionary/plate language (lang), never by the player's interface language — a player using the Spanish-plate game with an English interface still competes on the Spanish-plate leaderboard.
 ---
 
 ## Key Architectural Decisions & Rationale
 
-### 1. SHA-256 Hash Dictionary (Anti-Cheat)
-**Problem:** Exposing a plaintext word list in the JS bundle lets any user script a perfect score.
-**Solution:** Store only pre-computed SHA-256 hashes of valid words. The frontend hashes the
-user's input (+ a private salt) and checks existence in a `Set`. Word length is read from
-the plain-text input before hashing — never from the dictionary.
+### 1. Dictionary and Daily Plate Sequence — Server-Only, Bundled, Never Shipped to Client
+
+**Problem:** the validation dictionary is the core value of the game. Shipping it to the
+client in any form (plaintext or hashed) lets a determined player extract it via static
+analysis or targeted rainbow-table attacks against a fixed, discoverable salt.
+
+**Solution:** the dictionary never leaves the Worker. It is generated **offline** (see
+authoring notes below) and shipped as static data bundled directly into the Worker's deployed
+code — re-deployed whenever the dictionary or the daily sequence is updated. Validating a
+word and resolving "today's plate" are both pure in-memory lookups inside the Worker process,
+with no client-side fallback and no KV/storage read involved for this part.
+
+**Authoring approach:** the dictionary and the daily sequence are generated together, offline,
+from a master word list:
+1. For each valid word, compute every ordered 3-consonant subsequence it contains (consonant
+   filtering is locale-specific — e.g. `Ñ` is excluded from Spanish plates).
+2. Group words by the resulting consonant triplet; the number of matching words per triplet is
+   a natural difficulty signal (rare triplets = harder puzzles).
+3. Build a year-long calendar assigning one triplet + 4 digits to each day, optionally pairing
+   harder triplets with higher-bonus digits.
+4. Ship two artifacts to the Worker's own repo: the day→puzzle calendar, and, **per
+   combination actually used**, the small word list valid for that specific triplet (not one
+   monolithic dictionary) — this keeps each unit of bundled data small regardless of how large
+   the master dictionary eventually grows.
+
+This also means the client performs a **structural pre-check only** (does the submitted word
+contain the 3 required consonants, in order, with the right repetition count?) before ever
+calling the Worker — a word that fails this check is rejected locally, consumes no attempt,
+and never reaches the Worker. Only structurally-valid words are sent for real dictionary
+validation.
 
 ### 2. Strategy Pattern for Platform Abstraction
-**Problem:** The game must run in 3 environments: local dev, Cloudflare public review, YouTube production.
-**Solution:** A `PlatformService` interface abstracts all platform calls. `PlatformFactory`
-selects the correct implementation at runtime via `VITE_PLATFORM_TARGET`.
-Components never reference `window.ytgame` directly.
+
+**Problem:** the game must run in 2 environments: local development (no real backend) and
+production (Cloudflare).
+
+**Solution:** a `PlatformService` interface abstracts all backend interactions (auth status,
+puzzle retrieval, attempt submission, player profile). `PlatformFactory` selects the correct
+implementation via `VITE_PLATFORM_TARGET`: `MemoryPlatform` (local dev, hardcoded
+plates/dictionary/mock auth) or `CloudflarePlatform` (talks to the real Worker over HTTPS).
+There is no third platform target — this strategy previously also covered YouTube Playables;
+see "Discarded Direction" below for why that was removed.
 
 ### 3. Procedural Audio via Web Audio API
-**Problem:** MP3/WAV files bloat the bundle beyond YouTube's size cap.
-**Solution:** All music is synthesized in real-time using the browser's native Web Audio API,
-driven by a deterministic LCG PRNG seeded by a numeric value. Same seed = identical track
-on any device. Travel Mode uses the Room ID as the seed so co-located players hear the same music.
 
-### 4. Cloudflare Serverless Backend (0€ Cost)
-**Problem:** No budget for VPS or traditional API servers.
-**Solution:** Cloudflare Pages (static assets) + Cloudflare Workers (edge compute) +
-Cloudflare KV (transient storage). Infinite scalability at zero infrastructure cost.
+Unchanged from the original rationale: MP3/WAV files would bloat the bundle, so all music is
+synthesized in real time via a deterministic LCG PRNG. Same seed = identical track on any
+device. The only change from earlier iterations: **a mute/volume control is now allowed in
+the persistent HUD** (see decision 9 below) — this was previously prohibited under YouTube
+Playables design requirements, which no longer apply.
 
-### 5. Opaque Persistence (Console Injection Shield)
-**Problem:** Users can invoke `ytgame.game.saveData()` directly from the browser console
-to manipulate saved state (e.g., reset daily attempt counters).
-**Solution:** All persisted data is wrapped in a `PersistedEnvelope` with a Base64 payload
-and HMAC-SHA-256 signature. Tampered or raw JSON payloads are detected on load and trigger
-an automatic day-lock penalty.
+### 4. Cloudflare as the Real Backend (not a review/demo target)
 
-### 6. Cloudflare Worker as Leaderboard Authority
-**Problem:** Client-side validation can be bypassed; arbitrary scores can be submitted.
-**Solution:** The Worker holds the private dictionary salt (never exposed to the client).
-It independently re-validates every submitted word and issues a short-lived cryptographic
-token. Only token-bearing requests are authorized to invoke `submitScore()`.
+**Problem:** the game needs authoritative game logic, real anti-cheat, real-time multiplayer
+coordination, and a real leaderboard — none of which is achievable inside a sandboxed,
+client-only distribution model (see "Discarded Direction").
 
-### 7. UTC-Only Temporal Logic
-**Problem:** Client device clocks can be manipulated to unlock future daily puzzles.
-**Solution:** `PlatformService.initialize()` fetches the canonical epoch from a Cloudflare
-Worker. All game timers, seed derivation, and daily resets use this server-provided timestamp.
-`new Date()` is forbidden in game logic.
+**Solution:** Cloudflare Workers are the sole authority for puzzle generation, word
+validation, scoring, attempt counting, and multiplayer room state. The client never computes
+or asserts any of these — it only sends *actions* (attempt a word, create a room) and renders
+whatever the Worker returns. See `doc/technical/security-anticheat.md` and
+`doc/technical/worker-architecture.md`.
 
-### 8. Custom Virtual Keyboard
-**Problem:** Native mobile OS keyboards resize the WebView, breaking the layout.
-**Solution:** A fully custom HTML/CSS virtual keyboard handles all text input. Native
-`<input>` elements are forbidden. Physical keyboard events (`keydown`) are mapped to the
-same React state as the virtual keys for desktop support.
+### 5. Durable Objects (per-entity state) + D1 (queryable projection)
 
-### 9. No In-Game Mute Button
-**Problem:** An early HUD design included a music mute/unmute toggle as the primary audio
-control, including a persisted `audio.enabled` preference.
-**Solution:** Official Playables design requirements explicitly recommend against an overall
-in-game mute button. Removed entirely. The persisted preference was removed too — there was
-no real decision left for it to represent, since the only on/off authority is YouTube's own
-mute. Audio is now governed purely by runtime state (`AudioRuntimeContext`) reacting to
-`isSystemAudioEnabled()`/`onSystemAudioChange()`, with no persisted on/off flag at all.
+**Problem:** Workers KV offers only eventual consistency — unsuitable for per-player attempt
+counters (race conditions between concurrent requests) or for real-time multiplayer room
+state. KV also has no query/sort capability, which a leaderboard needs.
+
+**Solution:**
+- **1 Durable Object per player** — strong consistency for that player's daily attempts,
+  running score, and streak. The DO serializes all operations on that player, eliminating
+  race conditions without manual locking.
+- **1 Durable Object per Travel/Remote room** — same reasoning for multiplayer room state;
+  enables a future move from HTTP polling to native WebSockets for true real-time sync.
+- **D1** — holds a queryable, sortable projection of the leaderboard
+  (`playerId`, `alias`, `country`, `normalModeScore`), partitioned by `lang` (the dictionary/plate language, never the UI language). The default view is global within that language (all
+  players competing on that language's daily plates); an optional secondary view filters
+  that same global ranking by `country` (e.g. "Spanish-plate players from Argentina"). There
+  is no cross-language ranking of any kind, and no ranking scoped only by interface language.
+  The DO remains the source of truth; D1 is a read-optimized projection, acceptable to lag by
+  milliseconds/seconds.
+- **KV is not used** in the current design — every former KV use case (dictionary, daily
+  sequence, player state, room state, leaderboard) is better served by bundled static data,
+  Durable Objects, or D1 respectively.
+
+### 6. Authentication via OAuth (Google first), No Third-Party Auth Provider
+
+**Problem:** without real player identity, any client-asserted attempt counter or score is
+spoofable (a malicious client can simply claim to be a "new player" indefinitely).
+
+**Solution:** the Worker implements the OAuth Authorization Code flow itself (no Firebase or
+similar third party), starting with Google as the only provider, behind an `AuthProvider`
+strategy interface so additional providers can be added later without touching game logic.
+**Full-page redirect flow only** (no popups/iframes) — this is deliberately chosen for broad
+compatibility with constrained embedded browsers (car infotainment systems, smart TVs), which
+commonly block popups or third-party-cookie iframes but support ordinary page navigation.
+Only the `openid` scope is requested — no email, no real name — to minimize personal data
+collected (see decision 10).
+
+Session state is a Worker-issued `httpOnly`/`Secure` cookie. The client never reads or stores
+any identity/session token directly.
+
+### 7. Zero Client-Side Persistence
+
+**Problem:** the previous design (before settling on real authentication) relied on a
+two-layer signing scheme (symmetric envelope + Worker-issued asymmetric signature) specifically
+to compensate for the lack of real identity, so a client couldn't fabricate or roll back its
+own state. With real OAuth-backed identity, this entire problem disappears — the Worker never
+trusts client-submitted state in the first place, it always reads its own Durable Object.
+
+**Solution:** the client persists **nothing** sensitive — no `localStorage`, no
+`sessionStorage`, no signed envelope. All player state lives in memory for the duration of the
+session and is re-fetched from the Worker on load (cookie-authenticated, no user interaction
+required if the session cookie is still valid). On reload, the app returns to `SPLASH`,
+checks session validity, and re-hydrates from the Worker. This removes the previous
+"Opaque Persistence Layer" / `PayloadCrypto` seal-unseal mechanism entirely — there is nothing
+left for it to protect.
+
+### 8. Minimal Personal Data — Alias + OAuth Subject ID Only
+
+**Problem:** minimize legal/privacy surface (see `doc/legal/` once drafted) while still
+supporting a public leaderboard with display names and rough geography.
+
+**Solution:** the player record stores only `authProvider`, `externalProviderId` (the OAuth
+`sub`, opaque), a self-chosen unique `alias`, and `country` — the latter derived from
+Cloudflare's `CF-IPCountry` request header (edge geolocation by IP, no extra consent flow,
+approximate but sufficient for a leaderboard), never asked of or stored against the player's
+real identity. No name, email, or photo is requested or stored — supported by requesting only
+the `openid` OAuth scope (decision 6).
+
+### 9. HUD Audio Control — Now Allowed, Included
+
+**Reversal of a previous decision:** an earlier design explicitly removed any in-game
+mute/volume control because YouTube Playables design requirements prohibited it. That
+constraint no longer applies (see "Discarded Direction"). The persistent HUD now includes a
+mute/volume control as a deliberate product choice, not a platform requirement.
+
+### 10. Ad Engine via Strategy Pattern
+
+**Problem:** monetization via ads is a goal, but the specific provider may change over time.
+
+**Solution:** an `AdProvider` interface (`initialize()`, `showInterstitial()`,
+`showRewarded()`) decouples the game from any specific ad SDK. Starting provider and exact
+ad-unit product to be confirmed in the implementation session — likely a Google product
+suited to in-game interstitial/rewarded video, to be verified rather than assumed.
+
+### 11. UTC-Only Temporal Logic (unchanged)
+
+The Worker is the sole authority for "what day is it" for game-logic purposes — `new Date()`
+remains forbidden in client game logic. Only `TimeService.getCosmeticDate()` (local, for
+theme/badge resolution) uses the real device clock, and is explicitly non-authoritative.
+
+### 12. Custom Virtual Keyboard (unchanged)
+
+Native `<input>` elements remain forbidden; a custom keyboard avoids native mobile keyboard
+resize issues and gives full control over per-language layouts.
+
+### 13. Dynamic Open Graph Metadata for Sharing
+
+**Problem:** without official platform distribution, organic sharing (challenge-a-friend,
+social posting) is the primary growth channel — a static, generic OG card gives no incentive
+to share a specific result.
+
+**Solution:** a dedicated Worker route (e.g. `/r/<resultId>`) serves a minimal HTML response
+with result-specific `<meta>` tags (score, plate, challenge text) and a dynamically generated
+preview image, before redirecting a real browser into the SPA. Static, generic OG metadata
+remains the fallback for the bare game URL. Full design deferred to the relevant
+implementation session.
 
 ---
 
-## Platform Constraints Discovered
+## Discarded Direction — YouTube Playables
 
-- YouTube Playables runs in an iframe — `localStorage`, `IndexedDB`, and `Cookies` are banned.
-  Only `ytgame.game.saveData()` / `loadData()` are permitted for persistence.
-- YouTube enforces a strict CSP — external dictionary CDN domains must be whitelisted in
-  the Google developer console.
-- YouTube Playables is not accessible in Spain (as of 2026). A public Cloudflare review URL
-  is required to apply for official inclusion.
-- The YouTube SDK uses `document.hidden` alternatives — the `visibilitychange` event behavior
-  inside the iframe differs from standard browser behavior; rely on `ytgame.system.onPause/onResume`.
-- The YouTube SDK (`game_api/v1`) redirects to a versioned file, adding network latency.
-  When served locally, a Vite `type="module"` bundle executes before the SDK resolves the
-  redirect. `main.tsx` polls for `window.ytgame` before mounting React to guard against this.
-  The Test Suite's "SDK loaded before game code" check is a false negative in this local scenario; it does not reflect production behavior where YouTube injects the SDK before any game code.
-- The YouTube SDK exposes a single storage blob (`saveData`/`loadData` with no key). The
-  `PlatformService` interface adopts this constraint across all platforms — all game state is
-  serialized into one envelope. `MemoryPlatform` uses a fixed internal key `"plates_save"`.
-- The YouTube SDK prohibits the Page Visibility API entirely — confirmed in the official
-  integration requirements (see `doc/technical/playables-references.md`). `MemoryPlatform`
-  no longer uses `visibilitychange`; it simulates pause/resume/audio-change via
-  `installDevSimulationHooks()` (`src/platform/devTools.ts`), matching the real SDK contract
-  exactly instead of approximating it.
-- `ytgame.engagement.sendScore({ value: N })` accepts a single numeric value with no
-  leaderboard selector. The leaderboard is determined by YouTube from the registered
-  game identity of the uploaded ZIP.
-- `ytgame.system.getLanguage()` returns a full BCP-47 tag (e.g. `"es-ES"`, `"es-419"`,
-  `"en-US"`), providing both language and regional variant at runtime. This is the
-  source of truth for theme/badge locale resolution in `ThemeScheduler`.
+An earlier phase of this project targeted YouTube Playables as the primary distribution
+platform, with Cloudflare as a secondary/demo target. This was **fully discarded** after
+reviewing Playables' official certification requirements in detail. Documented here so the
+reasoning is not lost, and so it is not re-explored without re-confirming these constraints
+still hold.
+
+### Why it was discarded
+
+1. **No real anti-cheat possible.** Playables' Privacy & Data requirements state: *"Game MUST
+   NOT make external calls to any URLs or services, except... APIs owned by Google or
+   YouTube."* This forbids calling any self-hosted backend (Cloudflare or otherwise) from a
+   Playables build, which rules out server-side validation, scoring, or attempt-counting
+   authority entirely. Any anti-cheat would have had to be purely client-side.
+2. **No real multiplayer possible.** The same restriction makes the Travel Mode / Remote Mode
+   room-synchronization mechanic (HTTP polling/WebSockets against a third-party backend)
+   categorically impossible inside a Playables build, independent of the anti-cheat question.
+3. **No durable player identity available.** The public Playables SDK surface
+   (`system`/`game`/`engagement`/`ads`/`health`) exposes no player/user identifier. Without
+   one, any self-assigned client identifier is trivially resettable, making per-player
+   attempt limits unenforceable against a motivated cheater.
+4. **Obfuscation is prohibited**, beyond plain minification — further weakening any
+   client-side-only protection scheme that relied on hiding logic or constants.
+5. **Consequence accepted as decisive:** a leaderboard that is this easily falsified would
+   undermine the core engagement loop the game is designed around (accumulating score across
+   daily plays) — the risk was judged to outweigh the reach benefit of YouTube distribution.
+
+The Single Page Application requirement was checked too and was **already satisfied** by the
+existing React state-machine navigation — it was never a blocker, included here only for
+completeness.
+
+### What was removed as a result
+
+`YouTubePlatform`, the `yt-local`/`yt-zip` build modes and their `.env` files, SDK injection
+in `vite.config.ts`, the ZIP packaging pipeline, the Test Suite validation workflow, the
+"no mute button" / Page Visibility API prohibitions, and all related documentation
+(`doc/technical/playables-reference.md`).
+
+---
+
+## Platform Constraints Discovered (Cloudflare era)
+
+- OAuth must use a full-page redirect flow, not popups, for compatibility with constrained
+  embedded browsers (car infotainment, smart TVs) that commonly block popups/third-party
+  cookies in iframes.
+- `CF-IPCountry`, automatically added by Cloudflare at the edge, is sufficient for
+  approximate leaderboard geography without asking the player or handling extra consent.
+- Durable Objects provide strong consistency per entity at the cost of being unqueryable as a
+  set — hence the D1 projection for anything that needs sorting/filtering across players.
+- Cloudflare KV write operations are an order of magnitude more expensive than reads
+  ($5/million vs $0.50/million as of this writing) — informed the decision to avoid KV
+  altogether in favor of bundled static data + Durable Objects + D1.
 
 ---
 
 ## What's New System (Player Updates)
 
-Post-1.0.0, player-facing release notes are stored in `src/i18n/updates/XX.json` (one file
-per locale). These are separate from the technical `CHANGELOG.md`. The authoring workflow
-is: English draft from changelog → Spanish adaptation (developer-reviewed) → AI translation
-to remaining locales. See `doc/functional/player-updates.md` for full spec.
+Unchanged in principle from the original design — see `doc/functional/player-updates.md`.
+Player-facing release notes remain separate from the technical `CHANGELOG.md`.

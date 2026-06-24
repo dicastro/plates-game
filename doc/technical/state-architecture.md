@@ -1,70 +1,59 @@
-# State Architecture — Persisted vs. Runtime Contexts
+# State Architecture — Session-Hydrated vs. Pure-Runtime Contexts
 
-## 1. The Core Constraint
+## 1. The Core Distinction
 
-YouTube's `saveData()`/`loadData()` is **atomic** — a single blob, no key, no partial
-read/write. This is a platform constraint, but per `PlatformService`'s design principle
-("most restrictive platform constraint propagates to the interface"), it applies uniformly
-across all platforms (`MEMORY`, `CLOUDFLARE`, `YOUTUBE`).
+There is no client-side persistence of any kind (no `localStorage`, `sessionStorage`, or
+signed envelope) — see `AI_CONTEXT.md`, decision 7. Every React Context in this app falls
+into one of two categories, and the naming convention reflects *why* each one resets, since
+the two reasons are unrelated to each other:
 
-**Consequence:** there must be exactly **one** writer of persisted state in the entire app.
-Multiple independent contexts each calling `saveData()` would race against each other and
-silently lose data.
-
-## 2. The Pattern
-
-Two categories of React Context, never mixed in the same provider:
-
-| | Persisted Context | Runtime Context |
+| | Session-hydrated Context | Pure-runtime Context |
 |---|---|---|
-| Example | `PlayerDataContext` | `AudioRuntimeContext` |
-| Lifecycle | Survives across sessions | Resets every load (no persistence) |
-| Writer | The single, sole `saveData()` caller | Owns its own engine/SDK calls directly |
-| Initialized from | `platformService.loadData()` | May read an initial value from the persisted context, but never the other way around |
-| Growth | One new field + one domain-specific setter per feature | One new context per independent runtime domain |
+| Example | `PlayerSessionContext` | `AudioRuntimeContext` |
+| Resets when | The Worker session cookie is invalid/expired, or on first load before hydration completes | Every single page load, unconditionally |
+| Why it resets | No backend session to read from (authentication boundary) | Permanent browser constraint (autoplay policy requires a fresh user gesture every load) — true even with a perfectly valid session |
+| Source of truth | The player's Durable Object, read via the Worker on `initialize()` | Nothing external — it's pure in-memory UI state with no canonical source elsewhere |
+| Writer | `PlatformService.enterNormalMode()` / `submitAttempt()` responses update it; never writes anything back as "this is my state", only sends actions | Owns its own engine calls directly |
 
-**Rule:** a runtime context may read from a persisted context to bootstrap itself, but a
-persisted context must never depend on, or know about, runtime-only state. Mixing the two
-inside one context violates SRP — persistence I/O and in-memory lifecycle management are
-different reasons to change.
+**Rule:** a Session-hydrated context may be re-fetched at any point (re-login, explicit
+refresh) without any client-held data to reconcile — the Worker is unconditionally
+authoritative. A pure-runtime context never has anything to fetch in the first place; it is
+simply reset to its default and rebuilt from user interaction.
 
-## 3. Reference Implementation — Audio
+## 2. Reference Implementation — Audio
 
-- `PlayerDataContext` — persisted blob, currently empty (no audio preference exists; see
-  `doc/technical/audio-engine.md` §5 for why).
-- `AudioRuntimeContext` — runtime-only `isPlaying`, subscribes to `PlatformService.onPause`/
-  `onResume`/`onSystemAudioChange`.
-- `useAudio()` — combinator hook consumed by UI. Components never touch either context, or
-  `platformService`/`audioEngine` singletons, directly.
+- `AudioRuntimeContext` — pure-runtime `isPlaying`, subscribes to
+  `PlatformService.onPause`/`onResume` (tab visibility) and to the HUD mute toggle.
+- `useAudio()` — combinator hook consumed by UI. Components never touch the context or the
+  `audioEngine`/`platformService` singletons directly.
 
-## 4. Multi-Subscriber Lifecycle Events
+## 3. Reference Implementation — Player
 
-`PlatformService.onPause`/`onResume` are designed as callback arrays — multiple independent
-subscribers are supported natively, no extra event bus needed. Both `AudioRuntimeContext`
-(stops/resumes playback) and `PlayerDataContext` (flushes persisted data on pause, per the
-Playables requirement to save progress on `onPause`) subscribe independently, each handling
-its own concern.
+- `PlayerSessionContext` — session-hydrated. On `initialize()`, asks
+  `PlatformService.getSession()`; if a valid session exists, the player's profile (alias,
+  country, normal-mode score/streak) is already available without any user interaction. If
+  not, the UI prompts for login.
+- Game-specific runtime state while actually playing (remaining attempts this load, current
+  word being typed) is owned by `GameRuntimeContext` (see §5) — it bootstraps from
+  `PlayerSessionContext`'s last known snapshot but is itself never the source of truth; every
+  real attempt round-trips through the Worker.
 
-## 5. Future Domain — Game Sessions
-
-When in-progress game state is introduced (daily attempts, round timers), the same pattern
-applies:
+## 4. Future Domain — Game Sessions
 
 ```
-PlayerDataContext   // persisted: e.g. dailyAttempts ledger (hashes, never open counters)
-
-GameRuntimeContext  // runtime: remainingAttempts, currentWord, round timer
-                    // bootstraps from PlayerDataContext, writes back only at the
-                    // moments that constitute real persisted progress
+PlayerSessionContext  // session-hydrated: alias, country, normalModeScore, streak
+GameRuntimeContext    // pure-runtime: current word being typed, remaining attempts as of
+                      // the last Worker response, round timer (Travel/Remote)
 ```
 
-`GameRuntimeContext` will subscribe to `onPause`/`onResume` exactly like `AudioRuntimeContext`
-does today (e.g. to pause a Travel Mode round timer) — the pipeline already supports this;
-no architectural change will be required when it's implemented.
+`GameRuntimeContext` does not subscribe to `onPause`/`onResume` for Normal Mode (no timer to
+pause — see `doc/functional/game-modes.md`). If Travel Mode's per-round countdown needs to
+react to tab visibility, that subscription lives inside `GameEngine` itself, not in this
+context — to be confirmed in the relevant implementation session.
 
-## 6. Provider Composition
+## 5. Provider Composition
 
-All providers are composed in `src/app/AppProviders.tsx`. None of them depends on another
-at the *provider definition* level — nesting order is for readability only. Hooks that
-combine multiple contexts (e.g. `useAudio`) do so at the *consuming component* level, where
-every provider is already available regardless of nesting order.
+All providers are composed in `src/app/AppProviders.tsx`. None of them depends on another at
+the *provider definition* level — nesting order is for readability only. Hooks that combine
+multiple contexts (e.g. `useAudio`) do so at the *consuming component* level, where every
+provider is already available regardless of nesting order.

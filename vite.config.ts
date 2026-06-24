@@ -1,20 +1,6 @@
-import { defineConfig, loadEnv, type HtmlTagDescriptor } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { obfuscator } from "rollup-obfuscator";
-import zipPack from "vite-plugin-zip-pack";
-
-const YT_SDK_PLUGIN = {
-  name: "inject-ytgame-sdk",
-  transformIndexHtml(): HtmlTagDescriptor[] {
-    return [
-      {
-        tag: "script",
-        attrs: { src: "https://www.youtube.com/game_api/v1" },
-        injectTo: "head-prepend",
-      },
-    ];
-  },
-};
 
 const OBFUSCATOR_PLUGIN = obfuscator({
   options: {
@@ -36,33 +22,29 @@ const OBFUSCATOR_PLUGIN = obfuscator({
     splitStrings: true,
     splitStringsChunkLength: 5,
 
-    // CRITICAL: Must remain false to preserve window.ytgame SDK entry points
-    renameGlobals: false,
+    // Safe to enable — no external SDK entry-point contract to preserve.
+    renameGlobals: true,
   }
 });
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
+  const isRealBackend = mode === "production" || mode === "cf-staging";
+  const isProduction = mode === "production";
 
-  if ((mode === "demo" || mode === "yt-zip") && env.VITE_TIME_STRATEGY === "FAST_FORWARD") {
-    throw new Error("FAST_FORWARD time strategy is forbidden in demo/yt-zip builds.");
+  if (isRealBackend && env.VITE_TIME_STRATEGY === "FAST_FORWARD") {
+    throw new Error("FAST_FORWARD time strategy is forbidden in production builds.");
   }
 
   const FORCED_DELAY = Number(env.VITE_SPLASH_FORCED_DELAY_MS ?? 0);
-  if ((mode === "demo" || mode === "yt-zip") && FORCED_DELAY > 0) {
-    throw new Error("VITE_SPLASH_FORCED_DELAY_MS must be 0 (or unset) in demo/yt-zip builds.");
+  if (isRealBackend && FORCED_DELAY > 0) {
+    throw new Error("VITE_SPLASH_FORCED_DELAY_MS must be 0 (or unset) in production builds.");
   }
-
-  const withSdk = mode === "yt-local" || mode === "yt-zip";
-  const withObfuscation = mode === "demo" || mode === "yt-zip";
-  const withZip = mode === "yt-zip";
 
   return {
     plugins: [
       react(),
-      withSdk && YT_SDK_PLUGIN,
-      withObfuscation && OBFUSCATOR_PLUGIN,
-      withZip && zipPack({ outDir: "dist-zip", outFileName: "plates-game.zip" }),
+      isProduction && OBFUSCATOR_PLUGIN,
     ],
     build: {
       // Source maps disabled in production — never expose the original source to attackers

@@ -1,26 +1,41 @@
-# PLATES - The Ultimate License Plate Word Game
+# PLATES - The License Plate Word Game
 
-An engaging, lightweight, and linguistically inclusive word puzzle game built specifically for the **YouTube Playables** platform. 
-
-The core game mechanic revolves around a daily challenge: players are given a specific combination of 3 consonants and must find the shortest valid word that contains all three of them.
+A word puzzle game where players are given 3 consonants extracted from a license plate and
+must find the **shortest valid word** that contains all three, in the right order. Shorter
+words score higher. Scores accumulate across days into a persistent per-language leaderboard.
 
 ## 🌟 Key Features
 
-* **Daily Global Challenge:** Every player worldwide faces the same 3-consonant combination each day, aiming for the leaderboards with synchronized global resets.
-* **Multi-Language Support:** The user interface and the game vocabulary dictionaries are completely decoupled. You can play in English using a Spanish dictionary, or vice versa.
-* **Safe & Secure Vocabulary Validation:** To prevent cheating via automated scripts or client-side reverse engineering, the game utilizes an ultra-compressed **SHA-256 Hash Dictionary** architecture.
-* **Social & Group Play:** Includes specialized multiplayer modes designed for instant local fun or casual asynchronous competition with friends, with zero onboarding friction.
-* **Immersive & Dynamic Sound:** Features adaptive soundtrack loops generated directly via the native browser **Web Audio API** that respond dynamically to game time constraints and themes.
+* **Daily Global Challenge:** every player worldwide faces the same 3-consonant combination
+  each day, with a synchronized global reset.
+* **Independent Per-Language Editions:** the UI and the game dictionary are decoupled — you
+  can play with an English interface against the Spanish dictionary, or vice versa. Each
+  dictionary/plate language is a fully separate game with its own leaderboard.
+* **Server-Side Validation & Scoring:** the dictionary, the daily plate sequence, word
+  validation, and scoring all live exclusively in a Cloudflare Worker — never shipped to the
+  client, in any form.
+* **Social & Group Play:** Travel Mode (real-time, same-room) and Remote Mode (asynchronous,
+  between friends), both backed by Cloudflare Durable Objects.
+* **Account-Based Identity:** sign in with Google (more providers planned) to keep your score
+  and streak across devices. No persistent player data is ever stored in the browser.
+* **Immersive & Dynamic Sound:** adaptive soundtrack generated via the native browser
+  **Web Audio API**.
+* **Built to Share:** every result/challenge link renders a dynamic preview card (score,
+  plate, dare-a-friend text) when shared on social platforms.
 
 ## 🛠️ Tech Stack & Philosophy
 
 * **Frontend:** React, TypeScript, Vite, Tailwind CSS.
-* **Hosting & Serverless Compute:** Cloudflare Pages + Cloudflare Workers + Cloudflare KV.
-* **Platform Abstraction:** Architecture driven by the **Strategy Pattern** to decouple core game logic from backend platform implementations (`MemoryPlatform` vs `YouTubePlatform`).
-* **Graphics Infrastructure:** 100% Vectorial UI via inline structural SVGs and dynamic Tailwind CSS layers. Strict zero-rasterized assets policy (No PNG/JPG/WebP) to minimize bundle size.
-* **Audio Infrastructure:** Real-time mathematical music synthesis driven by deterministic Seeds. Zero static audio-file bandwidth policy.
-* **Target Delivery:** Dual-target builds. Capable of running as a standard public web application (hosted on Cloudflare for external review and onboarding) or compiling into a self-contained HTML5 ZIP package for the native **YouTube Playables SDK**.
-* **Architecture Goal:** 100% Serverless, Infinite Scalability, 0€ Infrastructure Maintenance Cost.
+* **Backend:** Cloudflare Workers (game authority, OAuth) + Durable Objects (per-player and
+  per-room state) + D1 (queryable leaderboard projection).
+* **Platform Abstraction:** Strategy Pattern (`PlatformService`) decoupling game logic from
+  backend implementation — `MemoryPlatform` (local dev, mocked) vs `CloudflarePlatform`
+  (production).
+* **Graphics:** 100% vectorial UI via inline SVG and Tailwind. Zero rasterized assets.
+* **Audio:** real-time procedural synthesis driven by deterministic seeds. Zero static audio
+  files.
+* **Monetization:** ad engine via a `AdProvider` strategy interface, provider-agnostic.
+* **Architecture Goal:** serverless, scalable, low infrastructure cost.
 
 ---
 
@@ -30,27 +45,20 @@ The core game mechanic revolves around a daily challenge: players are given a sp
 # 1. Install dependencies
 npm install
 
-# 2. Run local development environment (Uses MEMORY strategy)
+# 2. Run local development environment (Uses MEMORY strategy — no real backend)
 npm run dev
 
-# 3. Compile, obfuscate and ZIP code for production
+# 3. Build for production (Cloudflare)
 npm run build
 ```
 
 ## 🧪 Local QA Debugging Functions
 
-While running the development environment (`VITE_PLATFORM_TARGET=MEMORY`), you can emulate platform-level triggers and lifecycle events directly from your browser's developer console (F12) to audit defensive programming mechanisms:
+While running the development environment, you can emulate backend/lifecycle behavior from
+the browser console (F12):
 
-* `__SIMULATE_YT_PAUSE__()`: Simulates the YouTube application minimizing or triggering an interruption, instantly engaging audio-muting loops.
-* `__SIMULATE_YT_RESUME__()`: Simulates the player returning focus to the active game viewport.
-* `__SIMULATE_YT_AUDIO_CHANGE__(enabled: boolean)`: Simulates YouTube's platform-level mute button being toggled (`ytgame.system.onAudioEnabledChange`). Independent from pause/resume — see `doc/technical/audio-engine.md` §6.
-* `__SIMULATE_DATE_OFFSET__(days)`: Available when `VITE_TIME_STRATEGY=FAST_FORWARD`. Shifts the cosmetic date used by the Theme system forward by the given number of days, without waiting for the real calendar date. Useful for testing seasonal themes/badges locally.
-
-## ⏱️ Splash Screen Debugging
-
-The Splash screen normally resolves and disappears too fast to visually inspect. Set `VITE_SPLASH_FORCED_DELAY_MS` in `.env.development` to a value in milliseconds (e.g. `3000`) to hold the Splash on screen for that long. Leave unset or `0` for no delay.
-
-Both `VITE_TIME_STRATEGY=FAST_FORWARD` and `VITE_SPLASH_FORCED_DELAY_MS > 0` are blocked at build time in `demo`/`yt-zip` modes — see `doc/technical/build-pipeline.md`.
+* `__SIMULATE_DATE_OFFSET__(days)`: shifts the cosmetic date used by the Theme system
+  forward, for testing seasonal themes/badges without waiting for the real calendar date.
 
 ---
 

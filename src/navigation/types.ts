@@ -1,5 +1,6 @@
 export type AppScreen =
   | "SPLASH"
+  | "LOGIN"
   | "HOME"
   | "NORMAL_GAME"
   | "NORMAL_RESULT"

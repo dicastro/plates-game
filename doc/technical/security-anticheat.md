@@ -1,88 +1,78 @@
 # Security & Anti-Cheat Architecture
 
-## 1. Dictionary Validation Engine
+## 1. Principle
 
-### Format
-Dictionaries are precompiled offline into arrays of SHA-256 hex strings:
+The Worker is the sole authority for puzzle generation, word validation, scoring, and attempt
+counting. The client never asserts its own state — it only sends *actions* (attempt a word,
+enter Normal Mode) and renders whatever the Worker returns. There is nothing for the client to
+forge, because nothing it claims about its own progress is ever trusted. HTTPS protects the request/response in transit; the Durable Object is the only thing that ever needs to be trusted, and it is never reachable except through the Worker's own logic.
+
+## 2. Identity
+
+Every action is tied to the player's OAuth-authenticated session (a Worker-issued
+`httpOnly`/`Secure` cookie, sent automatically by the browser — never read or stored by
+client code). The Worker resolves `playerId` from this session on every request; it is never
+accepted as a request parameter from the client. See `doc/technical/worker-architecture.md`
+for the OAuth flow.
+
+## 3. Dictionary & Daily Puzzle — Server-Only
+
+The dictionary and the daily plate sequence are generated offline and bundled directly into
+the Worker's deployed code — never shipped to the client in any form, hashed or otherwise.
+Both are pure in-memory lookups inside the Worker process. See
+`doc/technical/worker-architecture.md` for the data format and update workflow.
+
+## 4. Per-Player Authoritative State — Durable Objects
+
+Each player has exactly one Durable Object instance, keyed by `playerId`, holding:
+
 ```
-["8bc2...", "1a4f...", "f5a2..."]
-```
-Served via Cloudflare CDN under gzip/brotli compression. No plaintext words ever in the bundle.
-
-### Validation Flow
-1. User submits a string (e.g., `"Canto"`).
-2. Extract `string.length` for scoring.
-3. Verify the string contains the active day's 3 consonants.
-4. Hash `lowercase(input) + VITE_DICTIONARY_SALT` → SHA-256.
-5. `DictionarySet.has(userHash)` → valid/invalid.
-
-### Salt Protection (Anti-Rainbow Table)
-All word signatures are compiled with a dynamic salt:
-`SHA-256(lowercase_word + project_secret_salt)`
-
-The frontend appends `VITE_DICTIONARY_SALT` before hashing. The salt is never exposed in
-plaintext — obfuscated in the production bundle via `stringArray` + `splitStrings` in
-`vite.config.ts`.
-
-## 2. Temporal Anti-Cheat
-
-- Daily challenge resets globally at **00:00 UTC**. Client clocks are never trusted.
-- On `PlatformService.initialize()`, production environments fetch the canonical UTC epoch
-  from a secure Cloudflare Worker endpoint.
-- All game timers, seed derivation, and daily countdown rely on this server-provided baseline.
-- Client-side `new Date()` is strictly forbidden for any game-logic timing.
-
-## 3. Opaque Persistence Layer (Console Injection Shield)
-
-### Payload Structure
-State never stores open values (e.g., `attempts: 3`). Instead, it stores a ledger:
-```json
-{ "attemptsLedger": ["hash1", "hash2"] }
-```
-
-### Envelope Format
-All data written to `PlatformService.saveData()` is wrapped by `PayloadCrypto.seal()`:
-```json
 {
-  "version": 1,
-  "payload": "U2FsdGVkX19v...",
-  "signature": "e3b0c44298fc..."
+  daySeed: string,              // which day attemptsUsedToday/bestScoreToday refer to
+  attemptsUsedToday: number,
+  bestScoreToday: number,       // provisional, see §6
+  normalModeScore: number,      // consolidated, monotonically increasing
+  lastDaySeedPlayed: string,
+  currentStreakDays: number
 }
 ```
 
-### Tamper Detection
-On `loadData()`:
-- Signature is recomputed and compared. Mismatch → `TAMPER_DETECTED` → key cleared, day locked.
-- Raw JSON without envelope structure → injection attempt logged → key removed, day locked.
-- `version` ahead of current `SCHEMA_VERSION` → `SCHEMA_VERSION_AHEAD` error → data discarded.
+The Durable Object model serializes all operations on a given player, eliminating race
+conditions between concurrent requests without manual locking — this is the actual mechanism
+preventing a player from, for example, firing two simultaneous attempts to bypass the daily
+limit.
 
-See `doc/technical/persistence-schema.md` for migration protocol.
+## 5. Attempt Validation Flow
 
-## 4. Leaderboard Integrity & Identity Binding
+1. **Client-side structural pre-check** (consonants present, correct order, correct
+   repetition count for today's puzzle) — purely local, no dictionary knowledge involved,
+   free to run. A word that fails this check is rejected immediately: it never reaches the
+   Worker, consumes no attempt, and does not affect the player's streak.
+2. Only structurally-valid words are sent to the Worker as a `submitAttempt` action.
+3. The Worker reads the player's Durable Object. If `attemptsUsedToday` has already reached
+   `DAILY_ATTEMPTS_LIMIT`, the action is rejected outright.
+4. Otherwise, the Worker checks the word against today's dictionary segment. Both outcomes
+   below increment `attemptsUsedToday` and update `lastDaySeedPlayed`/`currentStreakDays` —
+   submitting a structurally-valid guess that turns out not to be a real word still counts as
+   a genuine attempt at today's puzzle:
+   - **Not found in the dictionary:** rejected, no score.
+   - **Found:** scored per `doc/functional/scoring.md`; if higher than the current
+     `bestScoreToday`, replaces it.
+5. The Worker returns the updated state (attempts remaining, this attempt's result,
+   `bestScoreToday`); the client renders it without persisting anything itself.
 
-- Encrypted payload binds the player's platform `userId` and the active day's UTC seed.
-- Replay attack mitigation: copying another user's save state triggers identity/seed mismatch
-  on decryption → immediate session invalidation.
-- Score submissions to `PlatformService.submitScore()` require a cryptographic token issued
-  by the Cloudflare Worker (see §5). Direct console invocations are structurally rejected.
+## 6. Daily Consolidation
 
-## 5. Edge Server Verification Flow (Cloudflare Worker Verdict)
+A day's `bestScoreToday` is provisional until the day closes — closing happens when
+`attemptsUsedToday` reaches `DAILY_ATTEMPTS_LIMIT`, at which point `bestScoreToday` is added
+to `normalModeScore` once, and `bestScoreToday` resets for the next day. This prevents
+inflating the cumulative total by finding multiple valid words for the same day's puzzle —
+only the single best word found across that day's attempts ever counts.
 
-The Cloudflare Worker is the **sole authority** on match legitimacy. Client-side validation
-is UX-only (instant feedback). Leaderboard authorization requires a Worker-signed token.
+## 7. Rate Limiting
 
-### Flow
-1. On puzzle completion or attempt exhaustion, the client POSTs to the Worker:
-   - `userId` (platform identifier)
-   - `daySeed` (active puzzle configuration)
-   - Plain-text sequence of attempted words
-   - Elapsed resolution time
-
-2. The Worker (isolated, private environment):
-   - Appends the private `VITE_DICTIONARY_SALT` (stored as encrypted Cloudflare env var) to each word.
-   - Hashes and validates against the master dictionary set.
-   - Re-verifies 3-consonant containment and checks for time-drift anomalies.
-
-3. If legitimate, the Worker returns a short-lived cryptographic token.
-
-4. The client uses this token to invoke `PlatformService.submitScore()`.
+No dedicated rate-limiting product is used. The attempt counter in §4/§5 already bounds
+Normal Mode abuse structurally — there is no way to attempt more than
+`DAILY_ATTEMPTS_LIMIT` words per day regardless of how many requests are fired, because the
+Durable Object rejects any attempt once the counter is exhausted. The equivalent bound for
+Travel/Remote modes is the room's own Durable Object state (round count, attempts-per-round).

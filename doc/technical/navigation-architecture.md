@@ -18,6 +18,7 @@ for the YouTube Playables iframe lifecycle.
 
 export type AppScreen =
   | "SPLASH"
+  | "LOGIN"
   | "HOME"
   | "NORMAL_GAME"
   | "NORMAL_RESULT"
@@ -140,6 +141,7 @@ src/
 │   ├── NavigationContext.tsx
 ├── screens/
 │   ├── SplashScreen.tsx
+│   ├── LoginScreen.tsx
 │   ├── HomeScreen.tsx
 │   ├── NormalGameScreen.tsx      ← thin wrapper: builds GameConfig, renders GameEngine
 │   ├── NormalResultScreen.tsx

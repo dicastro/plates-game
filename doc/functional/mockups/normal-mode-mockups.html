@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PLATES — Normal Mode screen mockups</title>
+<style>
+  :root {
+    --bg:           #1a3d22;
+    --surface:      #2a5c34;
+    --surface2:     #3d6645;
+    --accent:       #f0c040;
+    --accent-hover: #f5d060;
+    --text:         #f0f4e8;
+    --text-muted:   #8db89a;
+    --border:       #3d6645;
+    --danger:       #c0392b;
+    --success:      #27ae60;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#111;font-family:system-ui,-apple-system,sans-serif;color:var(--text);padding:32px 24px 64px;}
+  .page-title{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#555;margin-bottom:8px;}
+  .page-heading{font-size:28px;font-weight:700;color:var(--accent);margin-bottom:4px;}
+  .page-meta{font-size:13px;color:#555;margin-bottom:32px;max-width:820px;line-height:1.6;}
+  .section{margin-bottom:48px;}
+  .section-title{font-size:16px;font-weight:700;color:var(--accent);margin-bottom:6px;}
+  .section-note{font-size:12px;color:#888;margin-bottom:18px;max-width:780px;line-height:1.6;}
+  .row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;}
+  .item{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .caption{font-size:11px;color:#888;text-align:center;max-width:240px;}
+
+  .frame{background:var(--bg);border-radius:22px;box-sizing:border-box;display:flex;flex-direction:column;gap:7px;position:relative;overflow:hidden;}
+  .frame-portrait{width:240px;height:480px;padding:12px;}
+  .frame-landscape{width:420px;height:240px;padding:12px;}
+
+  .plate{background:#fff;border:4px solid #1a1a1a;border-radius:10px;padding:5px 10px;display:inline-flex;align-items:center;}
+  .plate.jackpot{border-color:var(--accent);box-shadow:0 0 0 2px rgba(240,192,64,.35);}
+  .plate-digits{font-family:'Arial Black',Arial,sans-serif;font-size:16px;font-weight:900;color:#1a1a1a;letter-spacing:2px;}
+  .plate.jackpot .plate-digits{color:#a07000;}
+  .plate-sep{font-size:13px;color:#aaa;margin:0 4px;}
+  .plate-letters{font-family:'Arial Black',Arial,sans-serif;font-size:16px;font-weight:900;color:#1a1a1a;letter-spacing:2px;}
+
+  .badge{font-size:9px;font-weight:600;border-radius:5px;padding:2px 7px;border:none;cursor:pointer;}
+  .badge-bonus{background:var(--accent);color:#4a3500;}
+  .badge-difficulty{background:var(--surface2);color:var(--text-muted);}
+
+  .panel{background:var(--surface);border-radius:9px;padding:7px 9px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .panel.clickable{cursor:pointer;}
+  .panel-label{font-size:9px;color:var(--text-muted);margin-bottom:2px;}
+  .panel-value{font-size:13px;font-weight:600;color:var(--accent);}
+  .panel-value.empty{color:var(--text-muted);font-weight:500;}
+  .dots{display:flex;gap:3px;}
+  .dot{width:6px;height:6px;border-radius:50%;}
+  .dot-ok{background:var(--success);}
+  .dot-err{background:var(--danger);}
+  .dot-empty{background:var(--text-muted);opacity:.4;}
+
+  .icon-btn{border-radius:50%;background:var(--surface);border:1px solid var(--border);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .share-icon{width:22px;height:22px;flex-shrink:0;border-radius:50%;background:transparent;border:1.5px solid var(--accent);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;}
+
+  .input-row{background:var(--surface2);border-radius:8px;padding:6px 8px;display:flex;align-items:center;justify-content:space-between;gap:6px;}
+  .input-word{font-size:14px;font-weight:600;color:var(--text);letter-spacing:1px;flex:1;text-align:center;}
+  .key-btn{width:22px;height:22px;flex-shrink:0;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:11px;}
+  .key-btn.submit{border:none;background:var(--accent);color:#1a1a1a;}
+
+  .kb-row{display:grid;gap:3px;}
+  .kb-key{background:var(--surface);border-radius:4px;height:24px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text);}
+  .kb-key.action{background:var(--surface2);color:var(--text-muted);font-size:9px;}
+
+  .cta{background:var(--accent);color:#1a1a1a;font-weight:700;font-size:12px;border:none;border-radius:9px;padding:10px;width:100%;cursor:pointer;}
+  .cta:disabled{background:var(--surface2);color:var(--text-muted);cursor:not-allowed;}
+  .cta-secondary{background:transparent;border:1.5px solid var(--accent);color:var(--accent);font-size:10px;font-weight:700;border-radius:8px;padding:8px;width:100%;cursor:pointer;}
+  .helper-text{font-size:9px;color:var(--text-muted);text-align:center;}
+
+  .overlay-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;border-radius:22px;}
+  .overlay-card{background:var(--surface);border:1.5px solid var(--border);border-radius:13px;padding:16px;width:190px;position:relative;text-align:center;}
+  .overlay-card.accent{border-color:var(--accent);}
+  .overlay-close{position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:50%;background:#0e2615;border:1.5px solid var(--border);color:var(--text-muted);font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .overlay-title{font-size:13px;font-weight:700;margin-bottom:6px;}
+  .overlay-body{font-size:10px;color:var(--text);line-height:1.5;margin-bottom:10px;text-align:left;}
+  .overlay-card table{width:100%;font-size:10px;border-collapse:collapse;text-align:left;}
+  .overlay-card th{color:var(--text-muted);font-weight:500;padding:2px 0;}
+  .overlay-card td{padding:3px 0;border-top:1px solid var(--border);}
+
+  .loading-dots{display:flex;gap:6px;justify-content:center;}
+  .loading-dots span{width:8px;height:8px;border-radius:50%;background:var(--accent);}
+</style>
+</head>
+<body>
+
+<p class="page-title">PLATES — Functional Specification</p>
+<h1 class="page-heading">Normal Mode — Game Screen</h1>
+<p class="page-meta">Visual and behavioral reference for the Normal Mode game screen (<code style="color:var(--accent);">NORMAL_GAME</code>). Covers screen composition, states, overlays, and the responsive/rotation rules that apply to all of them. Theme: cantabria-verde. Proportions and spacing shown are illustrative; exact pixel values are an implementation detail.</p>
+
+<div class="section">
+  <p class="section-title">1. Collapsed state</p>
+  <p class="section-note">The keyboard is hidden by default. A single CTA occupies the space where the keyboard will appear. Tapping the CTA expands the input row and keyboard (section 2). The best-score panel is tappable and opens the attempts detail overlay (section 5). A Share icon — icon only, no label — sits next to the panel whenever a valid attempt exists for the current day; it is absent otherwise.</p>
+  <div class="row">
+
+    <div class="item">
+      <div class="frame frame-portrait">
+        <div style="display:flex;justify-content:space-between;">
+          <div class="icon-btn" style="width:22px;height:22px;font-size:10px;">?</div>
+          <div style="display:flex;gap:5px;">
+            <div class="icon-btn" style="width:22px;height:22px;"></div>
+            <div class="icon-btn" style="width:22px;height:22px;"></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <div class="plate jackpot"><span class="plate-digits">1221</span><span class="plate-sep">&middot;</span><span class="plate-letters">CNT</span></div>
+          <div style="display:flex;gap:5px;">
+            <button class="badge badge-bonus">x2 bonus</button>
+            <button class="badge badge-difficulty">tricky</button>
+          </div>
+        </div>
+        <div class="panel clickable">
+          <div>
+            <p class="panel-label">Best today &middot; tap for details</p>
+            <p class="panel-value">CANTO &middot; 97</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div class="dots"><span class="dot dot-ok"></span><span class="dot dot-err"></span><span class="dot dot-empty"></span><span class="dot dot-empty"></span><span class="dot dot-empty"></span></div>
+            <button class="share-icon">&#x2197;</button>
+          </div>
+        </div>
+        <div style="flex:1;"></div>
+        <button class="cta">Try a word</button>
+      </div>
+      <p class="caption">Portrait, collapsed — a valid attempt exists today, so the Share icon is present.</p>
+    </div>
+
+    <div class="item">
+      <div class="frame frame-portrait">
+        <div style="display:flex;justify-content:space-between;">
+          <div class="icon-btn" style="width:22px;height:22px;font-size:10px;">?</div>
+          <div style="display:flex;gap:5px;">
+            <div class="icon-btn" style="width:22px;height:22px;"></div>
+            <div class="icon-btn" style="width:22px;height:22px;"></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <div class="plate"><span class="plate-digits">3407</span><span class="plate-sep">&middot;</span><span class="plate-letters">BRT</span></div>
+        </div>
+        <div class="panel clickable">
+          <div>
+            <p class="panel-label">Best today</p>
+            <p class="panel-value empty">No valid word yet</p>
+          </div>
+          <div class="dots"><span class="dot dot-empty"></span><span class="dot dot-empty"></span><span class="dot dot-empty"></span><span class="dot dot-empty"></span><span class="dot dot-empty"></span></div>
+        </div>
+        <div style="flex:1;"></div>
+        <button class="cta">Try a word</button>
+      </div>
+      <p class="caption">Portrait, collapsed — no valid attempt today: no Share icon, empty-state label, no bonus badge (non-jackpot plate). The panel is still tappable.</p>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <p class="section-title">2. Expanded state</p>
+  <p class="section-note">The plate and best-score panel stay visible above the input row while the keyboard is expanded. The keyboard is anchored to the bottom edge of the screen, so it sits where a player's thumbs naturally rest on a handheld device. Backspace is part of the keyboard's bottom row, next to Z, matching common mobile keyboard layouts. The input row contains only Submit (left edge) and Close (right edge), kept apart from each other to avoid accidental taps. Submit is enabled only once the typed word contains the plate's three consonants in order.</p>
+  <div class="row">
+    <div class="item">
+      <div class="frame frame-portrait" style="gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="plate jackpot" style="padding:4px 9px;"><span class="plate-digits" style="font-size:14px;">1221</span><span class="plate-sep" style="font-size:11px;">&middot;</span><span class="plate-letters" style="font-size:14px;">CNT</span></div>
+          <div class="panel clickable" style="padding:5px 7px;text-align:right;">
+            <div><p class="panel-label">Best</p><p class="panel-value" style="font-size:12px;">CANTO &middot; 97</p></div>
+            <div class="dots"><span class="dot dot-ok"></span><span class="dot dot-err"></span><span class="dot dot-empty"></span><span class="dot dot-empty"></span><span class="dot dot-empty"></span></div>
+          </div>
+        </div>
+        <div style="margin-top:auto;display:flex;flex-direction:column;gap:6px;">
+          <div class="input-row">
+            <button class="key-btn submit">&#x2713;</button>
+            <span class="input-word">CAN_TO</span>
+            <button class="key-btn">&times;</button>
+          </div>
+          <div class="kb-row" style="grid-template-columns:repeat(10,1fr);">
+            <div class="kb-key">Q</div><div class="kb-key">W</div><div class="kb-key">E</div><div class="kb-key">R</div><div class="kb-key">T</div><div class="kb-key">Y</div><div class="kb-key">U</div><div class="kb-key">I</div><div class="kb-key">O</div><div class="kb-key">P</div>
+          </div>
+          <div class="kb-row" style="grid-template-columns:repeat(10,1fr);">
+            <div class="kb-key">A</div><div class="kb-key">S</div><div class="kb-key">D</div><div class="kb-key">F</div><div class="kb-key">G</div><div class="kb-key">H</div><div class="kb-key">J</div><div class="kb-key">K</div><div class="kb-key">L</div><div class="kb-key">&Ntilde;</div>
+          </div>
+          <div class="kb-row" style="grid-template-columns:repeat(8,1fr);">
+            <div class="kb-key">Z</div><div class="kb-key">X</div><div class="kb-key">C</div><div class="kb-key">V</div><div class="kb-key">B</div><div class="kb-key">N</div><div class="kb-key">M</div><div class="kb-key action">&#x232b;</div>
+          </div>
+          <p class="helper-text">Close collapses back to the CTA state. On a physical keyboard: letters type, Backspace deletes, Enter submits when enabled, Esc collapses.</p>
+        </div>
+      </div>
+      <p class="caption">Portrait, expanded — bonus/difficulty badges are not shown in this frame because the available height does not fit them together with the keyboard; section 7 defines the full visibility-priority rule that produces this.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="section-title">3. Landscape</p>
+  <p class="section-note">When enough vertical height is available, the bonus/difficulty badges sit under the plate — the same composition as the collapsed state — and the keyboard spans the full width, anchored to the bottom edge of the screen. The best-score panel keeps its attempt dots. When vertical height is limited, the keyboard occupies a side panel instead: the plate, badges, and best-score panel form a column on the left, and the entire left-column-plus-keyboard block is centered vertically as a single unit within the screen — the two halves are aligned to each other's top edge, not independently centered.</p>
+  <div class="row">
+
+    <div class="item">
+      <div class="frame frame-landscape" style="gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;">
+            <div class="plate jackpot" style="padding:4px 9px;"><span class="plate-digits" style="font-size:13px;">1221</span><span class="plate-sep" style="font-size:11px;">&middot;</span><span class="plate-letters" style="font-size:13px;">CNT</span></div>
+            <div style="display:flex;gap:4px;">
+              <button class="badge badge-bonus" style="font-size:8px;">x2 bonus</button>
+              <button class="badge badge-difficulty" style="font-size:8px;">tricky</button>
+            </div>
+          </div>
+          <div class="panel clickable" style="text-align:right;">
+            <div>
+              <p class="panel-label">Best today</p>
+              <p class="panel-value" style="font-size:12px;">CANTO &middot; 97</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;">
+              <div class="dots"><span class="dot dot-ok"></span><span class="dot dot-err"></span><span class="dot dot-empty"></span><span class="dot dot-empty"></span><span class="dot dot-empty"></span></div>
+              <button class="share-icon" style="width:18px;height:18px;font-size:9px;">&#x2197;</button>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:auto;display:flex;flex-direction:column;gap:5px;">
+          <div class="input-row" style="padding:5px 7px;">
+            <button class="key-btn submit" style="width:18px;height:18px;">&#x2713;</button>
+            <span class="input-word" style="font-size:12px;">CAN_TO</span>
+            <button class="key-btn" style="width:18px;height:18px;">&times;</button>
+          </div>
+          <div class="kb-row" style="grid-template-columns:repeat(10,1fr);">
+            <div class="kb-key" style="height:20px;">Q</div><div class="kb-key" style="height:20px;">W</div><div class="kb-key" style="height:20px;">E</div><div class="kb-key" style="height:20px;">R</div><div class="kb-key" style="height:20px;">T</div><div class="kb-key" style="height:20px;">Y</div><div class="kb-key" style="height:20px;">U</div><div class="kb-key" style="height:20px;">I</div><div class="kb-key" style="height:20px;">O</div><div class="kb-key" style="height:20px;">P</div>
+          </div>
+          <div class="kb-row" style="grid-template-columns:repeat(10,1fr);">
+            <div class="kb-key" style="height:20px;">A</div><div class="kb-key" style="height:20px;">S</div><div class="kb-key" style="height:20px;">D</div><div class="kb-key" style="height:20px;">F</div><div class="kb-key" style="height:20px;">G</div><div class="kb-key" style="height:20px;">H</div><div class="kb-key" style="height:20px;">J</div><div class="kb-key" style="height:20px;">K</div><div class="kb-key" style="height:20px;">L</div><div class="kb-key" style="height:20px;">&Ntilde;</div>
+          </div>
+          <div class="kb-row" style="grid-template-columns:repeat(8,1fr);">
+            <div class="kb-key" style="height:20px;">Z</div><div class="kb-key" style="height:20px;">X</div><div class="kb-key" style="height:20px;">C</div><div class="kb-key" style="height:20px;">V</div><div class="kb-key" style="height:20px;">B</div><div class="kb-key" style="height:20px;">N</div><div class="kb-key" style="height:20px;">M</div><div class="kb-key action" style="height:20px;">&#x232b;</div>
+          </div>
+        </div>
+      </div>
+      <p class="caption">Landscape, sufficient height — badges under the plate, keyboard spans full width and is anchored to the bottom edge.</p>
+    </div>
+
+    <div class="item">
+      <div class="frame frame-landscape" style="justify-content:center;">
+        <div style="display:flex;flex-direction:row;align-items:flex-start;gap:8px;">
+          <div style="width:120px;flex-shrink:0;display:flex;flex-direction:column;gap:6px;">
+            <div class="plate jackpot" style="padding:4px 8px;align-self:flex-start;"><span class="plate-digits" style="font-size:12px;">1221</span><span class="plate-sep" style="font-size:10px;">&middot;</span><span class="plate-letters" style="font-size:12px;">CNT</span></div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              <button class="badge badge-bonus" style="font-size:8px;">x2</button>
+              <button class="badge badge-difficulty" style="font-size:8px;">tricky</button>
+            </div>
+            <div class="panel clickable" style="flex-direction:column;align-items:flex-start;gap:4px;">
+              <p class="panel-label">Best today</p>
+              <p class="panel-value" style="font-size:11px;">CANTO &middot; 97</p>
+              <div style="display:flex;align-items:center;gap:5px;">
+                <div class="dots"><span class="dot dot-ok"></span><span class="dot dot-err"></span><span class="dot dot-empty"></span><span class="dot dot-empty"></span><span class="dot dot-empty"></span></div>
+                <button class="share-icon" style="width:16px;height:16px;font-size:8px;">&#x2197;</button>
+              </div>
+            </div>
+          </div>
+          <div style="width:217px;flex-shrink:0;display:flex;flex-direction:column;gap:6px;">
+            <div class="input-row" style="padding:5px 7px;">
+              <button class="key-btn submit" style="width:18px;height:18px;">&#x2713;</button>
+              <span class="input-word" style="font-size:12px;">CAN_TO</span>
+              <button class="key-btn" style="width:18px;height:18px;">&times;</button>
+            </div>
+            <div class="kb-row" style="grid-template-columns:repeat(10,1fr);">
+              <div class="kb-key">Q</div><div class="kb-key">W</div><div class="kb-key">E</div><div class="kb-key">R</div><div class="kb-key">T</div><div class="kb-key">Y</div><div class="kb-key">U</div><div class="kb-key">I</div><div class="kb-key">O</div><div class="kb-key">P</div>
+            </div>
+            <div class="kb-row" style="grid-template-columns:repeat(10,1fr);">
+              <div class="kb-key">A</div><div class="kb-key">S</div><div class="kb-key">D</div><div class="kb-key">F</div><div class="kb-key">G</div><div class="kb-key">H</div><div class="kb-key">J</div><div class="kb-key">K</div><div class="kb-key">L</div><div class="kb-key">&Ntilde;</div>
+            </div>
+            <div class="kb-row" style="grid-template-columns:repeat(8,1fr);">
+              <div class="kb-key">Z</div><div class="kb-key">X</div><div class="kb-key">C</div><div class="kb-key">V</div><div class="kb-key">B</div><div class="kb-key">N</div><div class="kb-key">M</div><div class="kb-key action">&#x232b;</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="caption">Landscape, limited height — keyboard as a side panel. The left column and the keyboard are aligned to a shared top edge, and that combined block is centered vertically within the screen as one unit.</p>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <p class="section-title">4. Submission flow overlays</p>
+  <p class="section-note">Submitting a word collapses the keyboard, shows the CTA in its collapsed position, and displays a loading overlay while the Worker validates the word against the dictionary. The Worker's response opens one of three result overlays. The "new best" variant offers sharing the word and score just achieved. The "valid, not best" variant offers sharing today's existing best score instead — framed as challenging a friend — since the word just submitted did not change that best score. The "not in the dictionary" variant offers no sharing option, since the attempt produced no score. Dismissing any result overlay returns to the collapsed state with the CTA.</p>
+  <div class="row">
+
+    <div class="item">
+      <div class="frame frame-portrait">
+        <div class="overlay-backdrop" style="background:rgba(15,30,18,.85);">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+            <div class="loading-dots"><span></span><span style="opacity:.6;"></span><span style="opacity:.3;"></span></div>
+            <p style="font-size:11px;">Checking the dictionary&hellip;</p>
+          </div>
+        </div>
+      </div>
+      <p class="caption">Loading overlay. Reusable across the app; the message is a parameter, not fixed text.</p>
+    </div>
+
+    <div class="item">
+      <div class="frame frame-portrait">
+        <div class="overlay-backdrop">
+          <div class="overlay-card accent">
+            <div class="overlay-close">&times;</div>
+            <p style="font-size:22px;">&#127942;</p>
+            <p class="overlay-title" style="color:var(--accent);">New best today!</p>
+            <p style="font-size:16px;font-weight:700;letter-spacing:1px;margin-bottom:4px;">CANTO</p>
+            <p style="font-size:12px;color:var(--success);margin-bottom:10px;">97 points</p>
+            <button class="cta" style="font-size:11px;padding:8px;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;"><span>&#x2197;</span> Share this result</button>
+            <button class="cta-secondary">Continue</button>
+          </div>
+        </div>
+      </div>
+      <p class="caption">Result overlay — new best. Shares the result just achieved.</p>
+    </div>
+
+    <div class="item">
+      <div class="frame frame-portrait">
+        <div class="overlay-backdrop">
+          <div class="overlay-card">
+            <div class="overlay-close">&times;</div>
+            <p style="font-size:22px;">&#x2705;</p>
+            <p class="overlay-title" style="color:var(--text);">Valid word</p>
+            <p style="font-size:16px;font-weight:700;letter-spacing:1px;margin-bottom:4px;">CARTA</p>
+            <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">62 points &mdash; today's best is still 97</p>
+            <button class="cta-secondary" style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;"><span>&#x2197;</span> Share your best &middot; challenge a friend</button>
+            <button class="cta" style="font-size:11px;padding:8px;">Try again</button>
+          </div>
+        </div>
+      </div>
+      <p class="caption">Result overlay — valid, but does not beat today's best. Shares today's existing best score (CANTO · 97), not the word just submitted (CARTA).</p>
+    </div>
+
+    <div class="item">
+      <div class="frame frame-portrait">
+        <div class="overlay-backdrop">
+          <div class="overlay-card">
+            <div class="overlay-close">&times;</div>
+            <p style="font-size:22px;">&#x1F50D;</p>
+            <p class="overlay-title" style="color:var(--danger);">Not in the dictionary</p>
+            <p style="font-size:15px;font-weight:700;color:var(--text-muted);text-decoration:line-through;margin-bottom:8px;">CANTU</p>
+            <p style="font-size:10px;margin-bottom:10px;">3 attempts left today &mdash; keep trying!</p>
+            <button class="cta" style="font-size:11px;padding:8px;">Try again</button>
+          </div>
+        </div>
+      </div>
+      <p class="caption">Result overlay — structurally valid but not a real word. The attempt is consumed; no sharing option is offered.</p>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <p class="section-title">5. Informational overlays</p>
+  <p class="section-note">The attempts detail overlay is reachable by tapping the best-score panel (section 1). The plate bonus/difficulty overlay is reachable by tapping either badge under the plate. The rules overlay is shown automatically the first time a player enters Normal Mode, and is reachable at any time via the "?" button.</p>
+  <div class="row">
+
+    <div class="item">
+      <div class="frame frame-portrait">
+        <div class="overlay-backdrop">
+          <div class="overlay-card" style="width:200px;">
+            <div class="overlay-close">&times;</div>
+            <p class="overlay-title" style="color:var(--accent);">Today's attempts</p>
+            <p class="overlay-body">Each row is one submitted word and its result. Only the highest-scoring valid word counts toward today's best score.</p>
+            <table>
+              <tr><th>#</th><th>Word</th><th style="text-align:right;">Score</th></tr>
+              <tr><td>1</td><td style="color:var(--success);">CANTO</td><td style="text-align:right;color:var(--accent);">97</td></tr>
+              <tr><td>2</td><td style="color:var(--danger);">CANTU</td><td style="text-align:right;color:var(--text-muted);">0</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+      <p class="caption">Attempts detail overlay.</p>
+    </div>
+
+    <div class="item">
+      <div class="frame frame-portrait">
+        <div class="overlay-backdrop">
+          <div class="overlay-card" style="width:200px;">
+            <div class="overlay-close">&times;</div>
+            <p class="overlay-title" style="color:var(--accent);">Plate bonus &amp; difficulty</p>
+            <p class="overlay-body">This plate's digits form a palindrome (capicúa), doubling the digit bonus. Possible answers by word length — shorter words score higher.</p>
+            <table>
+              <tr><th>Length</th><th style="text-align:right;">Possible words</th></tr>
+              <tr><td>5</td><td style="text-align:right;">3</td></tr>
+              <tr><td>6</td><td style="text-align:right;">11</td></tr>
+              <tr><td>7+</td><td style="text-align:right;">28</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+      <p class="caption">Plate bonus/difficulty overlay.</p>
+    </div>
+
+    <div class="item">
+      <div class="frame frame-portrait">
+        <div class="overlay-backdrop">
+          <div class="overlay-card" style="width:200px;text-align:left;">
+            <div class="overlay-close">&times;</div>
+            <p class="overlay-title" style="color:var(--accent);text-align:center;">How to play</p>
+            <p class="overlay-body">Find the shortest word that contains the plate's 3 consonants, in order. Shorter words score higher. You get 5 attempts a day; only your best valid word counts. Wrong guesses never subtract points.</p>
+            <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-muted);margin-bottom:10px;">
+              <input type="checkbox" /> Don't show this again
+            </label>
+            <button class="cta" style="font-size:11px;padding:8px;">Got it</button>
+          </div>
+        </div>
+      </div>
+      <p class="caption">First-time rules overlay. The "don't show this again" preference is stored on the player's profile in the Worker.</p>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <p class="section-title">6. Attempts exhausted</p>
+  <p class="section-note">Once the daily attempt limit is reached, the CTA becomes disabled and shows a countdown to the next plate instead of its usual label. The countdown is a local, non-authoritative display; it is informational only, not an anti-cheat mechanism. Below it, a secondary, independent button offers an extra attempt in exchange for watching a rewarded ad. This button is gated by the player attribute <code style="color:var(--accent);">adsEnabled: boolean</code> on <code style="color:var(--accent);">PlayerProfile</code> (default <code style="color:var(--accent);">true</code>): when <code style="color:var(--accent);">false</code>, the button does not render at all. Granting the extra attempt always requires Worker-side confirmation that the rewarded ad actually completed — it is never a client-only unlock.</p>
+  <div class="row">
+
+    <div class="item">
+      <div class="frame frame-portrait">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <div class="plate jackpot"><span class="plate-digits">1221</span><span class="plate-sep">&middot;</span><span class="plate-letters">CNT</span></div>
+        </div>
+        <div class="panel clickable">
+          <div><p class="panel-label">Best today</p><p class="panel-value">CANTO &middot; 97</p></div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div class="dots"><span class="dot dot-ok"></span><span class="dot dot-err"></span><span class="dot dot-err"></span><span class="dot dot-err"></span><span class="dot dot-err"></span></div>
+            <button class="share-icon" style="width:18px;height:18px;font-size:9px;">&#x2197;</button>
+          </div>
+        </div>
+        <div style="flex:1;"></div>
+        <button class="cta" disabled>New plate in 06:42:11</button>
+        <p class="helper-text">Come back tomorrow for a new plate</p>
+        <button class="cta-secondary">&#9654; Watch an ad for 1 extra attempt</button>
+      </div>
+      <p class="caption">adsEnabled = true — the ad button is shown.</p>
+    </div>
+
+    <div class="item">
+      <div class="frame frame-portrait">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <div class="plate jackpot"><span class="plate-digits">1221</span><span class="plate-sep">&middot;</span><span class="plate-letters">CNT</span></div>
+        </div>
+        <div class="panel clickable">
+          <div><p class="panel-label">Best today</p><p class="panel-value">CANTO &middot; 97</p></div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div class="dots"><span class="dot dot-ok"></span><span class="dot dot-err"></span><span class="dot dot-err"></span><span class="dot dot-err"></span><span class="dot dot-err"></span></div>
+            <button class="share-icon" style="width:18px;height:18px;font-size:9px;">&#x2197;</button>
+          </div>
+        </div>
+        <div style="flex:1;"></div>
+        <button class="cta" disabled>New plate in 06:42:11</button>
+        <p class="helper-text">Come back tomorrow for a new plate</p>
+      </div>
+      <p class="caption">adsEnabled = false — the ad button does not render at all.</p>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <p class="section-title">7. Responsive degradation hierarchy &amp; device rotation</p>
+  <p class="section-note">No element on this screen has a fixed pixel height; every size derives from the available width and height of its container, so the same rules apply across portrait, landscape, and rotation in either direction.</p>
+  <p class="section-note">
+    <strong style="color:var(--text);">Visibility priority, highest to lowest:</strong><br/>
+    1. The plate — always visible. It is the game's identity and the player's only reference while typing.<br/>
+    2. The keyboard and input row — always visible whenever expanded.<br/>
+    3. Bonus/difficulty badges — the first element hidden if vertical space is insufficient.<br/>
+    4. The best-score panel, including its attempt dots — hidden only if hiding the badges was not enough.
+  </p>
+  <p class="section-note">
+    <strong style="color:var(--text);">Implementation approach:</strong><br/>
+    &bull; Each keyboard key uses <code style="color:var(--accent);">aspect-ratio: 1 / 1</code> (or close to it) instead of a fixed height — width comes from the grid (<code style="color:var(--accent);">repeat(N, 1fr)</code>) over the available width, and height derives from that width automatically.<br/>
+    &bull; The badge-then-best-score-panel hide order is driven by CSS Container Queries (<code style="color:var(--accent);">@container</code>) on a sized wrapper around the game area, not by <code style="color:var(--accent);">@media</code> viewport queries. Exact height thresholds are an implementation detail.<br/>
+    &bull; No JavaScript measures or assigns pixel sizes anywhere in this scheme; sizing is declarative CSS end to end.
+  </p>
+  <p class="section-note">
+    <strong style="color:var(--text);">Device rotation:</strong> game state — the word being typed, attempts used, best score — lives in React state, never in the DOM or derived from layout. Rotating the device only changes the container size that the CSS above reacts to. No component inside the game screen may be keyed by orientation or unmounted/remounted on resize, so a rotation never resets or loses in-progress state.
+  </p>
+</div>
+
+</body>
+</html>

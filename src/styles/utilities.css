@@ -16,3 +16,15 @@
 
 @keyframes plates-dot-pulse { 0%,80%,100%{opacity:.25;transform:scale(.8)} 40%{opacity:1;transform:scale(1)} }
 .plates-dot { animation: plates-dot-pulse 1.4s ease-in-out infinite; }
+
+.game-area {
+  container-type: size;
+  container-name: game-area;
+}
+
+@container game-area (max-height: 360px) {
+  .game-plate-badges-row { display: none; }
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }

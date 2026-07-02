@@ -10,17 +10,50 @@ know anything about Cloudflare directly — they only call `PlatformService` met
 
 | Method | Description |
 |---|---|
-| `initialize(): Promise<PlayerProfile \| null>` | Checks for an existing valid session and returns the player's profile if found, null otherwise — the caller decides what to do (e.g. show the login screen). No separate session-getter method exists; this is the single entry point. |
+| `initialize(): Promise<PlayerProfile \| null>` | Checks for an existing valid session and returns the player's profile if found, null otherwise. |
 | `login(provider: AuthProviderId): Promise<void>` | Starts the OAuth full-page redirect flow for the given provider. |
 | `logout(): Promise<void>` | Clears the Worker-issued session. |
-| `enterNormalMode(lang: string): Promise<NormalModeStatus>` | Authoritative read: today's puzzle + the player's current attempts/score/streak for `lang`. No state is written by this call. |
-| `submitAttempt(lang: string, word: string): Promise<AttemptResult>` | Submits a structurally-valid attempt (client already checked consonant order/count before calling this). The Worker validates against the dictionary, scores, and updates the player's Durable Object. |
-| `onPause(callback): void` / `onResume(callback): void` | Standard Page Visibility API wiring (tab backgrounded/foregrounded). |
-| `showRewardedAd(): Promise<boolean>` | Delegates to the active `AdProvider`; resolves `true` if the player completed the rewarded flow. |
+| `enterNormalMode(lang: string): Promise<NormalModeStatus>` | Authoritative read: today's puzzle + the player's current attempts/score/streak for `lang`. |
+| `submitAttempt(lang: string, word: string): Promise<AttemptResult>` | Submits a structurally-valid attempt. The Worker validates, scores, and updates the Durable Object. |
+| `markRulesIntroSeen(): Promise<void>` | Persists `hasSeenRulesIntro = true` on the player's profile. Called once, the first time the player dismisses the rules overlay with "don't show again". |
+| `onPause(callback): void` / `onResume(callback): void` | Page Visibility API wiring. |
+| `showRewardedAd(): Promise<boolean>` | Delegates to the active `AdProvider`; resolves `true` if the rewarded flow completed. |
 
-`PlayerProfile`, `NormalModeStatus`, and `AttemptResult` shapes are defined in
-`doc/technical/worker-architecture.md`, not duplicated here — this document describes the
-abstraction, not the wire format.
+### Key shapes
+
+```typescript
+interface PlayerProfile {
+  alias: string;
+  country: string;
+  normalModeScore: number;
+  currentStreakDays: number;
+  hasSeenRulesIntro: boolean; // persisted via markRulesIntroSeen()
+  adsEnabled: boolean;        // when false, rewarded-ad button is never rendered
+}
+
+interface AttemptRecord {
+  word: string;
+  valid: boolean;
+  score: number;
+}
+
+interface NormalModeStatus {
+  daySeed: string;
+  puzzle: { consonants: string[]; digits: string; bonusType: PlateBonusType };
+  attemptsUsedToday: number;
+  bestScoreToday: number;
+  attemptsHistory: AttemptRecord[]; // full history for the day, for the detail overlay
+  player: PlayerProfile;
+}
+
+interface AttemptResult {
+  valid: boolean;
+  scoreThisAttempt: number;
+  attemptsUsedToday: number;
+  bestScoreToday: number;
+  player: PlayerProfile;
+}
+```
 
 ## 3. Available Strategies
 

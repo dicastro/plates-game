@@ -208,6 +208,91 @@ preview image, before redirecting a real browser into the SPA. Static, generic O
 remains the fallback for the bare game URL. Full design deferred to the relevant
 implementation session.
 
+### 14. Known Risk — Selective ISP-Level IP Blocking (Spain, La Liga)
+
+**Problem:** in Spain, La Liga (the professional football league operator) has obtained the
+ability to have ISPs block specific IP ranges suspected of streaming-piracy use, without
+judicial intervention per request, during live matches. Cloudflare IP ranges have reportedly
+been swept up in these blocks more than once, affecting unrelated traffic sharing the same
+range. If this happens, a Spanish player's device-to-Cloudflare requests fail at the ISP
+level — they never reach the Worker, so there is no `CF-IPCountry` header or any other
+server-side signal to detect this. The Worker has no way to distinguish "this player is
+offline" from "this player is selectively blocked."
+
+**Status:** known risk, not mitigated. Currently surfaced to the player only as a generic
+network-failure overlay on `submitAttempt()` failure (see
+`doc/functional/mockups/normal-mode-mockups.html` §4 and
+`doc/technical/state-architecture.md` for where `GameRuntimeContext` owns this state).
+
+**Mitigation proposed (not implemented):** a client-side connectivity probe — a `HEAD`
+request against a large, unrelated CDN/domain (e.g. a widely-used Google or Cloudflare
+resource outside this game) — fired only when `submitAttempt()` fails. If the probe succeeds
+while the Worker call fails, that's a reasonable signal of selective domain blocking rather
+than a general outage, and the error overlay could show a more specific message (e.g.
+referencing sports-event-related IP blocks, common in Spain) without ever needing to know the
+player's country — which is precisely the data that is unavailable in this failure mode.
+
+**Open questions before implementing:** false-positive risk if the probe's own target is
+unreachable for unrelated reasons; an extra network request fired on every failure path;
+exact wording of the more specific message. Tracked in `doc/NEXT_STEPS.md`.
+
+### 15. Landscape Mode Removed — Viewport Gate Instead
+
+**Decision:** explicit landscape layout variants were abandoned after multiple
+implementation iterations proved them more complex than valuable. The game is
+played in portrait orientation; landscape on a phone-sized device is an edge case
+with limited screen height that degrades the experience.
+
+**Current behavior:** `useViewportSupport` checks `window.innerHeight` at mount
+and on resize/`orientationchange`. If the current viewport height is below
+`MIN_PLAYABLE_HEIGHT_PX` (480px):
+- If the *other* orientation would satisfy the threshold (current width ≥ 480px),
+  a "rotate your device" notice is shown.
+- If neither orientation satisfies it, an "unsupported resolution" notice is shown.
+The notice is rendered *inside* `GameRuntimeProvider` (not outside) so that any
+in-progress game state survives while the notice is displayed.
+
+**What this replaces:** CSS `landscape:` variants, `landscape-compact` custom
+Tailwind breakpoint, and the side-keyboard layout. None of these exist in the
+codebase.
+
+### 16. `shared/` as Explicit Architectural Zone
+
+Code that must be consumed by both the client bundle and the Cloudflare Worker
+lives in `shared/` at the project root. `tsconfig.app.json` includes it; the
+Worker will have its own `tsconfig` that also includes it. Current modules:
+
+| File | Purpose |
+|---|---|
+| `shared/scoring.ts` | Score formula, `PlateBonusType` |
+| `shared/wordValidation.ts` | Structural pre-check (`isStructurallyValid`) |
+| `shared/gameConfig.ts` | Tunable game constants (`NORMAL_MODE_DAILY_ATTEMPTS_LIMIT`, `MIN_PLAYABLE_HEIGHT_PX`) |
+
+Rule: a module belongs in `shared/` if and only if the Worker needs it. Pure
+client UI logic stays in `src/`.
+
+### 17. `ScrollableWord` — Deliberate DOM Measurement Exception
+
+`ScrollableWord` (`src/components/ScrollableWord.tsx`) reads `scrollWidth`,
+`clientWidth`, and `scrollLeft` in a `useLayoutEffect` and on `onScroll` events.
+This is a deliberate, narrowly scoped exception to the "no DOM measurement"
+architectural rule (which prohibits JS measuring rendered elements to *size* them).
+
+`ScrollableWord` does not size anything — it only answers a binary question
+("does this content overflow its container?") that CSS alone cannot answer
+conditionally to drive interactive behavior (directional scroll arrows). The
+component never changes any element's width, height, or font size based on
+measurement; it only shows/hides navigation buttons and animates `scrollLeft`.
+
+### 18. Virtual Keyboard — No Throttle, Debounce Instead
+
+Interactive buttons throughout the app use the timestamp-based throttle in
+`Button.tsx` (400ms). The virtual keyboard keys use a shared `lastPressRef`
+debounce (150ms) instead — a throttle per-key would allow rapid alternation
+between two keys at full speed, which is the correct behavior for typing. A
+single shared debounce prevents double-fires from mouse/touch event overlap
+without blocking natural fast typing across different keys.
+
 ---
 
 ## Discarded Direction — YouTube Playables

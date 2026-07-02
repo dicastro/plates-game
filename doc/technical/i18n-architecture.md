@@ -34,6 +34,16 @@ src/i18n/
 1. Create `src/i18n/locales/XX.ts` implementing `TranslationSchema`.
 2. Add `XX` to the `SUPPORTED` record in `useTranslation.ts`.
 
+### Established namespaces in `TranslationSchema`
+
+| Namespace | Purpose |
+|---|---|
+| `app` | App title and tagline |
+| `home` | Home screen button labels |
+| `hud` | Persistent HUD button labels |
+| `game.normal` | All Normal Mode game screen strings (keyboard, overlays, panels, countdown, ads) |
+| `viewport` | Viewport gate notice strings (rotate device, unsupported resolution) |
+
 ## 3. Player Updates Layer (`src/i18n/updates/`)
 
 Editorial content, lazy-loaded, JSON format. See `doc/functional/player-updates.md`

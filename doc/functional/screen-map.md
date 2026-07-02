@@ -173,22 +173,38 @@ Fallback: copy-to-clipboard.
 ## 8. Game Engine Contract
 
 All three modes drive the same `<GameEngine />` component. Mode-specific behavior
-is injected via a `GameConfig` prop, making the engine fully reusable.
+is injected via a `GameConfig` plain data object (not a Context), making the engine
+reusable across modes.
 
 ```typescript
 interface GameConfig {
-  mode: "NORMAL" | "TRAVEL" | "REMOTE";
-  attemptsLimit: number;        // 5 / 1 / 1
+  mode: GameMode;                  // "NORMAL" | "TRAVEL" | "REMOTE"
+  lang: string;                    // dictionary/plate language, e.g. "es"
+  attemptsLimit: number;           // 5 (Normal) / 1 (Travel) / 1 (Remote)
   countdownSeconds: number | null; // null = no timer (Normal/Remote), 60 (Travel)
-  consonants: string[];         // 3 consonants from plate or room config
-  plateDigits: string;          // "1234" — for bonus calculation
-  utcEpoch: number;             // server-provided — never use Date()
-  onRoundComplete: (result: RoundResult) => void;
+  consonants: string[];
+  plateDigits: string;
+  bonusType: PlateBonusType;
+  initialAttemptsUsed: number;     // hydrated from enterNormalMode() response
+  initialBestScore: number;
+  initialAttemptsHistory: AttemptRecord[];
+  onExit: () => void;              // navigate("HOME") — always available
 }
 ```
 
-The engine emits `onRoundComplete` and the parent screen handles routing to the
-appropriate result screen.
+**Normal Mode behavior:** the engine stays on `NORMAL_GAME` for the full session.
+There is no "round complete" transition — the player submits up to `attemptsLimit`
+words and the best valid score counts. Result overlays appear inline over the game
+screen; dismissing them returns to the collapsed keyboard state on the same screen.
+The player exits via the explicit exit button (`config.onExit`), not via a result
+outcome.
+
+**Travel / Remote Mode behavior (future):** each round will emit a result and the
+parent screen will handle routing to the round-result screen. The exact contract
+for multi-round modes is to be defined in the relevant implementation session.
+
+`GameEngine` always keeps `GameRuntimeProvider` mounted — see
+`doc/technical/state-architecture.md` §3 for the reason (orientation-change safety).
 
 ---
 

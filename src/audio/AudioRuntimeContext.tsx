@@ -32,6 +32,7 @@ export function AudioRuntimeProvider({ children }: { children: ReactNode }) {
   const wantsAudioRef = useRef(false);
   const pausedByVisibilityRef = useRef(false);
   const lastSeedRef = useRef<number | null>(null);
+  const isMutedRef = useRef(false); // mirrors isMuted synchronously, for use inside callbacks registered once
 
   function play(seed: number) {
     wantsAudioRef.current = true;
@@ -40,6 +41,7 @@ export function AudioRuntimeProvider({ children }: { children: ReactNode }) {
     if (pausedByVisibilityRef.current) return;
 
     audioEngine.start(seed);
+    audioEngine.setMute(isMutedRef.current);
     setIsPlaying(true);
   }
 
@@ -51,6 +53,7 @@ export function AudioRuntimeProvider({ children }: { children: ReactNode }) {
 
   function toggleMute() {
     const next = !isMuted;
+    isMutedRef.current = next;
     setIsMuted(next);
     audioEngine.setMute(next);
   }
@@ -66,6 +69,7 @@ export function AudioRuntimeProvider({ children }: { children: ReactNode }) {
       pausedByVisibilityRef.current = false;
       if (wantsAudioRef.current && lastSeedRef.current !== null) {
         audioEngine.start(lastSeedRef.current);
+        audioEngine.setMute(isMutedRef.current); // re-apply mute state lost on engine restart
         setIsPlaying(true);
       }
     });

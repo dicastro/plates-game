@@ -4,6 +4,7 @@ import PersistentHUD from "./hud/PersistentHUD";
 import SplashScreen from "./screens/SplashScreen";
 import LoginScreen from "./screens/LoginScreen";
 import HomeScreen from "./screens/HomeScreen";
+import NormalGameScreen from "./screens/NormalGameScreen";
 
 function AppShell() {
   const { state } = useNavigation();
@@ -16,6 +17,8 @@ function AppShell() {
         return <LoginScreen />;
       case "HOME":
         return <HomeScreen />;
+      case "NORMAL_GAME":
+        return <NormalGameScreen />;
       default:
         return <HomeScreen />;
     }

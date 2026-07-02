@@ -4,27 +4,39 @@ import type {
   NormalModeStatus,
   AttemptResult,
   AuthProviderId,
+  AttemptRecord,
 } from "./PlatformService";
 import { calculateAttemptScore } from "../../shared/scoring";
 
-const MOCK_PLAYER: PlayerProfile = {
-  alias: "DevPlayer",
-  country: "ES",
-  normalModeScore: 0,
-  currentStreakDays: 0,
-};
-
-// Small fixed dictionary + fixed daily sequence, enough to exercise the attempt flow locally.
-const MOCK_DICTIONARY = ["CANTO", "TRAMO", "CARTA"];
 const MOCK_PUZZLE: NormalModeStatus["puzzle"] = {
   consonants: ["C", "N", "T"],
   digits: "1221",
   bonusType: "palindrome",
 };
 
+const MOCK_DICTIONARY = ["CANTO", "TRAMO", "CARTA"];
+
+const SIMULATED_DELAY_MIN_MS = 400;
+const SIMULATED_DELAY_MAX_MS = 1200;
+
+function simulatedNetworkDelay(): Promise<void> {
+  const ms = SIMULATED_DELAY_MIN_MS + Math.random() * (SIMULATED_DELAY_MAX_MS - SIMULATED_DELAY_MIN_MS);
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export class MemoryPlatform implements PlatformService {
+  private player: PlayerProfile = {
+    alias: "DevPlayer",
+    country: "ES",
+    normalModeScore: 0,
+    currentStreakDays: 0,
+    hasSeenRulesIntro: false,
+    adsEnabled: false,
+  };
+
   private bestScoreToday = 0;
   private attemptsUsedToday = 0;
+  private attemptsHistory: AttemptRecord[] = [];
   private pauseCallbacks: Array<() => void> = [];
   private resumeCallbacks: Array<() => void> = [];
 
@@ -34,7 +46,7 @@ export class MemoryPlatform implements PlatformService {
       if (document.hidden) this.pauseCallbacks.forEach((cb) => cb());
       else this.resumeCallbacks.forEach((cb) => cb());
     });
-    return MOCK_PLAYER;
+    return this.player;
   }
 
   async login(_provider: AuthProviderId): Promise<void> {
@@ -51,11 +63,14 @@ export class MemoryPlatform implements PlatformService {
       puzzle: MOCK_PUZZLE,
       attemptsUsedToday: this.attemptsUsedToday,
       bestScoreToday: this.bestScoreToday,
-      player: MOCK_PLAYER,
+      attemptsHistory: [...this.attemptsHistory], // defensive copy — never leak the live mutable array
+      player: this.player,
     };
   }
 
   async submitAttempt(_lang: string, word: string): Promise<AttemptResult> {
+    await simulatedNetworkDelay();
+    
     this.attemptsUsedToday += 1;
     const valid = MOCK_DICTIONARY.includes(word.toUpperCase());
     const scoreThisAttempt = valid
@@ -63,13 +78,19 @@ export class MemoryPlatform implements PlatformService {
       : 0;
     if (scoreThisAttempt > this.bestScoreToday) this.bestScoreToday = scoreThisAttempt;
 
+    this.attemptsHistory.push({ word: word.toUpperCase(), valid, score: scoreThisAttempt });
+
     return {
       valid,
       scoreThisAttempt,
       attemptsUsedToday: this.attemptsUsedToday,
       bestScoreToday: this.bestScoreToday,
-      player: MOCK_PLAYER,
+      player: this.player,
     };
+  }
+
+  async markRulesIntroSeen(): Promise<void> {
+    this.player = { ...this.player, hasSeenRulesIntro: true };
   }
 
   onPause(callback: () => void): void {

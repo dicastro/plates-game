@@ -135,6 +135,23 @@ doc/technical/    ← security-anticheat, audio-engine, platform-strategy,
 ### 14. Tonality
 - Extremely concise, direct, and highly technical. No conversational filler.
 
+### 15. Deferred Work — `doc/NEXT_STEPS.md`
+
+- During a session, a concern or improvement may be intentionally **not**
+  addressed now. If the developer defers it (explicitly, or by moving on
+  without resolving it) rather than rejecting it outright, add a one-line
+  entry to `doc/NEXT_STEPS.md` pointing to wherever the problem/proposal is
+  documented (an `AI_CONTEXT.md` decision, a `/doc` spec, or a mockup
+  section).
+- This is separate from the documentation-update step in §5: §5 covers
+  updating docs for what *was* built and validated this session;
+  `doc/NEXT_STEPS.md` covers what was *not* built, so it isn't lost.
+- When asked "what's next" or for a next-step suggestion, always check
+  `doc/NEXT_STEPS.md` first alongside `/doc`.
+- An entry is removed once implemented, or once promoted into a proper spec
+  section in `/doc` (at which point the spec is the source of truth, not the
+  backlog line).
+
 ---
 
 ## Versioning Rules (Summary)

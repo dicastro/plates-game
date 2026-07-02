@@ -27,6 +27,10 @@ export class CloudflarePlatform implements PlatformService {
     throw new Error("CloudflarePlatform.submitAttempt not yet implemented.");
   }
 
+  async markRulesIntroSeen(): Promise<void> {
+    throw new Error("CloudflarePlatform.markRulesIntroSeen not yet implemented.");
+  }
+
   onPause(_callback: () => void): void {
     throw new Error("CloudflarePlatform.onPause not yet implemented.");
   }

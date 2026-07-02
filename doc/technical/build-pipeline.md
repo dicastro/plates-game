@@ -54,3 +54,27 @@ documentation warning — the build fails loudly rather than relying on develope
 | `VITE_SPLASH_FORCED_DELAY_MS` | any value `> 0` | `production` |
 
 When adding a new dev-only env var, add a matching guard following this same pattern.
+
+## 6. PWA Installability
+
+`public/manifest.webmanifest` declares the app as installable:
+- `display: "fullscreen"` — hides browser UI (address bar, tab strip) on install.
+- `orientation: "any"` — the viewport gate (`useViewportSupport`) handles orientation
+  enforcement at runtime; the manifest does not restrict it.
+- Icons: `public/icon-192.png` and `public/icon-512.png` (raster, a deliberate
+  exception to the Zero-Raster Policy — the Web App Manifest spec requires PNG icons;
+  inline SVG is not accepted by browser install prompts).
+
+`public/sw.js` registers a minimal app-shell cache:
+- Caches only `/`, `/index.html`, and `/manifest.webmanifest` on install.
+- On navigation fetch failure (offline), serves the cached `index.html` as a fallback
+  so the app shell loads and can display an offline message.
+- Does **not** cache game data, Worker responses, or any dynamic content — gameplay
+  requires a live connection per `security-anticheat.md`.
+- Only registered in production builds (`import.meta.env.PROD` guard in `main.tsx`) —
+  avoids HMR interference in development.
+
+Note: Service Worker registration requires a secure context (HTTPS or `localhost`).
+LAN testing over plain HTTP requires enabling
+`chrome://flags/#unsafely-treat-insecure-origin-as-secure` on the test device.
+See `CONTRIBUTING.md` for local development setup.

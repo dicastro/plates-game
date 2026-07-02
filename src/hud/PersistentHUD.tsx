@@ -8,18 +8,13 @@ export default function PersistentHUD() {
   const { t } = useTranslation();
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex gap-2">
-      <HUDIconButton
-        ariaLabel={isMuted ? t("hud.unmute") : t("hud.mute")}
-        onClick={toggleMute}
-      >
+    <div className="fixed top-4 left-4 z-50 flex gap-1.5">
+      <HUDIconButton ariaLabel={isMuted ? t("hud.unmute") : t("hud.mute")} onClick={toggleMute}>
         {isMuted ? <SpeakerMutedIcon /> : <SpeakerOnIcon />}
       </HUDIconButton>
-
       <HUDIconButton ariaLabel={t("hud.settingsUnavailable")} disabled>
         <SettingsGearIcon />
       </HUDIconButton>
-
       <HUDIconButton ariaLabel={t("hud.whatsNewUnavailable")} disabled>
         <BellIcon />
       </HUDIconButton>
@@ -27,16 +22,8 @@ export default function PersistentHUD() {
   );
 }
 
-function HUDIconButton({
-  children,
-  onClick,
-  ariaLabel,
-  disabled = false,
-}: {
-  children: ReactNode;
-  onClick?: () => void;
-  ariaLabel: string;
-  disabled?: boolean;
+function HUDIconButton({ children, onClick, ariaLabel, disabled = false }: {
+  children: ReactNode; onClick?: () => void; ariaLabel: string; disabled?: boolean;
 }) {
   return (
     <button
@@ -44,7 +31,7 @@ function HUDIconButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
-      className="w-11 h-11 rounded-full flex items-center justify-center bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border)] disabled:opacity-40 disabled:cursor-not-allowed"
+      className="w-9 h-9 rounded-full flex items-center justify-center bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border)] disabled:opacity-40 disabled:cursor-not-allowed"
     >
       {children}
     </button>

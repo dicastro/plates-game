@@ -6,6 +6,14 @@ export interface PlayerProfile {
   country: string;
   normalModeScore: number;
   currentStreakDays: number;
+  hasSeenRulesIntro: boolean;
+  adsEnabled: boolean;
+}
+
+export interface AttemptRecord {
+  word: string;
+  valid: boolean;
+  score: number;
 }
 
 export interface NormalModeStatus {
@@ -17,6 +25,7 @@ export interface NormalModeStatus {
   };
   attemptsUsedToday: number;
   bestScoreToday: number;
+  attemptsHistory: AttemptRecord[];
   player: PlayerProfile;
 }
 
@@ -31,12 +40,12 @@ export interface AttemptResult {
 export type AuthProviderId = "google";
 
 export interface PlatformService {
-  /** Checks for an existing valid session and hydrates the player's profile if found. */
   initialize(): Promise<PlayerProfile | null>;
   login(provider: AuthProviderId): Promise<void>;
   logout(): Promise<void>;
   enterNormalMode(lang: string): Promise<NormalModeStatus>;
   submitAttempt(lang: string, word: string): Promise<AttemptResult>;
+  markRulesIntroSeen(): Promise<void>;
   onPause(callback: () => void): void;
   onResume(callback: () => void): void;
   showRewardedAd(): Promise<boolean>;

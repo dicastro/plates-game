@@ -27,7 +27,35 @@ simply reset to its default and rebuilt from user interaction.
 - `useAudio()` — combinator hook consumed by UI. Components never touch the context or the
   `audioEngine`/`platformService` singletons directly.
 
-## 3. Reference Implementation — Player
+## 3. Reference Implementation — Game Engine
+
+- `GameRuntimeContext` — pure-runtime, **scoped to the game screen lifetime**
+  (not app-wide). Mounted and unmounted together with `GameEngine`. Bootstraps
+  from `GameConfig.initial*` values (hydrated by `NormalGameScreen` from the
+  `enterNormalMode()` response); every real attempt round-trips through the Worker
+  and the context is updated from the Worker's response via `SUBMIT_SUCCESS`.
+- `GameRuntimeProvider` must **always remain mounted** regardless of whether the
+  viewport gate (`useViewportSupport`) is showing a notice screen. If the provider
+  were unmounted when the device is rotated out of the supported viewport, the
+  in-progress game state (attempts used, history, typed word) would be lost and
+  the player could bypass the daily attempt limit by rotating and returning.
+  `GameEngine` therefore always renders `<GameRuntimeProvider>` and only switches
+  its *child* between `<GameEngineLayout>` and `<ViewportNoticeScreen>`.
+- `useGameRuntime()` — consuming hook. Components inside the engine never touch
+  `platformService` or `PlayerSessionContext` directly; all side effects go through
+  context actions (`submit()`, `openOverlay()`, etc.).
+
+## 4. Provider Nesting & Scoping Summary
+
+| Context | Scope | Resets when |
+|---|---|---|
+| `ThemeProvider` | App lifetime | Never within a session |
+| `PlayerSessionContext` | App lifetime | Session cookie expires / explicit logout |
+| `AudioRuntimeContext` | App lifetime | Every page load (browser autoplay policy) |
+| `NavigationContext` | App lifetime | Every page load (pure state machine) |
+| `GameRuntimeContext` | Game screen lifetime | `navigate()` away from `NORMAL_GAME` |
+
+## 5. Reference Implementation — Player
 
 - `PlayerSessionContext` — session-hydrated. On `initialize()`, asks
   `PlatformService.getSession()`; if a valid session exists, the player's profile (alias,
@@ -38,7 +66,7 @@ simply reset to its default and rebuilt from user interaction.
   `PlayerSessionContext`'s last known snapshot but is itself never the source of truth; every
   real attempt round-trips through the Worker.
 
-## 4. Future Domain — Game Sessions
+## 6. Future Domain — Game Sessions
 
 ```
 PlayerSessionContext  // session-hydrated: alias, country, normalModeScore, streak
@@ -51,7 +79,7 @@ pause — see `doc/functional/game-modes.md`). If Travel Mode's per-round countd
 react to tab visibility, that subscription lives inside `GameEngine` itself, not in this
 context — to be confirmed in the relevant implementation session.
 
-## 5. Provider Composition
+## 7. Provider Composition
 
 All providers are composed in `src/app/AppProviders.tsx`. None of them depends on another at
 the *provider definition* level — nesting order is for readability only. Hooks that combine

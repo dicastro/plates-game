@@ -44,10 +44,17 @@ limit.
 
 ## 5. Attempt Validation Flow
 
-1. **Client-side structural pre-check** (consonants present, correct order, correct
-   repetition count for today's puzzle) — purely local, no dictionary knowledge involved,
-   free to run. A word that fails this check is rejected immediately: it never reaches the
-   Worker, consumes no attempt, and does not affect the player's streak.
+1. **Client-side structural pre-check** — implemented in `shared/wordValidation.ts`,
+   imported by both the client and the Worker. Rules:
+   - The word must contain each of the puzzle's consonants, in order, at least once.
+   - Any number of other letters may appear before, between, or after them.
+   - The word length must be strictly greater than the number of consonants (minimum
+     one vowel guaranteed; no real word in any supported language consists solely of
+     consonants).
+   - Examples for consonants `[C, N, T]`: `CANTO` ✓, `CANT` ✓, `CNNNNT` ✓,
+     `AAAACNT` ✓, `CNT` ✗ (length equals consonant count), `ACNT` ✓.
+   - A word failing this check is rejected locally, never reaches the Worker, consumes
+     no attempt, and does not affect the player's streak.
 2. Only structurally-valid words are sent to the Worker as a `submitAttempt` action.
 3. The Worker reads the player's Durable Object. If `attemptsUsedToday` has already reached
    `DAILY_ATTEMPTS_LIMIT`, the action is rejected outright.

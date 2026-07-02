@@ -30,14 +30,17 @@ doc/
 
 ---
 
-## 1. Centralized Game Configuration (`src/config/gameConfig.ts`)
+## 1. Centralized Game Configuration
 
-All numerical constants are defined here for easy tuning.
+All numerical constants shared between the client and the Worker live in
+`shared/gameConfig.ts`. Constants used only by the client live in `src/config/`
+(currently empty — all existing constants were promoted to `shared/`).
 
 ### 1.1 General
 | Constant | Value | Description |
 |---|---|---|
-| `DAILY_ATTEMPTS_LIMIT` | `5` | Max attempts per day in Normal Mode |
+| `NORMAL_MODE_DAILY_ATTEMPTS_LIMIT` | `5` | Max attempts per day in Normal Mode. Lives in `shared/gameConfig.ts` (also consumed by the Worker). |
+| `MIN_PLAYABLE_HEIGHT_PX` | `480` | Minimum viewport height (px) required to render the game. Below this the viewport gate triggers. Lives in `shared/gameConfig.ts`. |
 | `MAX_STORAGE_TRIPS_HISTORIC` | `30` | Max historical sessions stored per user |
 | `DICTIONARY_FALLBACK_LANG` | `"en"` | Fallback locale for missing translation keys |
 

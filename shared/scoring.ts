@@ -1,11 +1,12 @@
-// shared/scoring.ts
 // Pure, dependency-free module — imported by both the game client and the Worker.
-// See doc/functional/scoring.md for the formula. Implementation pending.
 
 export type PlateBonusType = "none" | "sum" | "pairs" | "trio" | "quartet" | "palindrome";
 
 export const PLATE_SCORING_BASE_SCORE = 100;
 
+/**
+ * See doc/functional/scoring.md for the formula. Implementation pending.
+ */
 export function calculateAttemptScore(
   wordLength: number,
   digits: string,

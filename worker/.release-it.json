@@ -13,7 +13,7 @@
   },
   "git": {
     "commitMessage": "chore(back): release v${version}",
-    "tagName": "v${version}"
+    "tagName": "back-v${version}"
   },
   "npm": {
     "publish": false

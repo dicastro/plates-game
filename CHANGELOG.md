@@ -1,5 +1,19 @@
 
 
+## 0.8.0 (2026-07-07)
+
+
+### Features
+
+* **audio:** add platform-aware audio runtime with pause/mute compliance 899f497
+* **game:** implement Normal Mode game screen — GameEngine, keyboard, overlays, viewport gate 54caa5b
+* **navigation:** implement navigation skeleton, theme system and splash screen 4de3f1f
+* **platform:** drop YouTube Playables, make Cloudflare the production backend 18ee082
+* **platform:** implement YouTubePlatform and align build pipeline for YouTube Playables 2b2c69e
+* scaffold Phase 1 skeleton — platform abstraction, i18n, audio engine, CSS module structure, crypto persistence layer with schema versioning, and App shell 9e848fa
+* **ui:** implement Home screen with shared screen container and button component 425a868
+* **worker:** implement cloudflare worker backend for normal mode 1b43012
+
 ## [0.7.0](///compare/v0.6.0...v0.7.0) (2026-07-02)
 
 

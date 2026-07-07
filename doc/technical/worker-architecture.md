@@ -38,8 +38,11 @@ sequence) and a new D1 partition/binding, not new Worker code.
   was trying to reach before being sent to login). On successful callback, the Worker
   redirects to `${FRONTEND_BASE_URL}/?intent=<intent>` (or `/` if none) — **never** a
   path relative to the Worker's own origin, since the Worker doesn't serve the SPA.
-- Session cookie: `httpOnly`/`Secure`/`SameSite=Lax`, HMAC-signed, payload
-  `${authProviderId}:${externalProviderId}` — never the internal `playerId` — so the
+- Session cookie: `httpOnly`/`Secure`/`SameSite` is configurable per environment via
+  `SESSION_COOKIE_SAME_SITE` (`Lax`/`None`/`Strict`) — must be `None` whenever the frontend
+  and Worker sit on different sites, since `Lax` cookies are not attached to cross-site `fetch()`
+  requests even with `credentials: "include"`, only to top-level navigations. HMAC-signed,
+  payload `${authProviderId}:${externalProviderId}` — never the internal `playerId` — so the
   same Durable Object can be re-resolved via `idFromName()` on every request without a
   lookup table.
 - `PlayerDO.createIfMissing()` assigns the internal `playerId` (UUID) and `country`

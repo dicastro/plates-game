@@ -50,3 +50,40 @@ Backlog of deferred items. Not detailed specs — each entry points to where the
   environment. Needs a solution before the second language deployment — e.g. passing
   the originating frontend origin through the OAuth `state` token itself, the same way
   `intent` already travels through it. See `doc/technical/worker-architecture.md` §4.
+
+- **Special characters per language (accents, diaeresis, etc.).** The virtual keyboard
+  (`VirtualKeyboard.tsx`/`keyboardLayouts.ts`) currently has no way to type accented
+  vowels or a diaeresis — Spanish dictionary words containing them (e.g. "canción",
+  "pingüino") cannot be entered or matched at all. At minimum, diaeresis should not be
+  dropped from the dictionary (it changes pronunciation/meaning); plain accents could
+  arguably be normalized away if a simpler approach is preferred, but this is a product
+  decision, not a technical constraint. Needs: (1) decide whether the dictionary itself
+  stores accented forms or a normalized/stripped variant, (2) if accented forms are
+  kept, extend `keyboardLayouts.ts` per language with the extra characters (likely as a
+  secondary keyboard row/mode, given screen space), (3) confirm `isStructurallyValid`
+  (`shared/wordValidation.ts`) behaves correctly with accented input (JS `toUpperCase()`
+  already uppercases accented characters correctly, so no code change expected there,
+  but needs actual verification against real accented dictionary words). Each future
+  language will have its own set of special characters to account for (this is not
+  Spanish-specific plumbing).
+
+- **Multi-device attempt history goes stale mid-session.** `AttemptResult`
+  (`shared/types.ts`) does not include the full `attemptsHistory` — only the new
+  attempt's own result plus `attemptsUsedToday`/`bestScoreToday` totals. The client
+  (`GameRuntimeContext`'s `SUBMIT_SUCCESS` reducer action) locally appends the new
+  attempt to its in-memory history instead of replacing it with the backend's
+  authoritative list, which only refreshes on `enterNormalMode` (page reload / re-enter
+  Normal Mode). Effect: a player using two devices simultaneously against the same
+  daily puzzle sees a stale attempts list/history on the device they're not actively
+  using, until they leave and re-enter. Not a security issue — `attemptsUsedToday` is
+  always enforced server-side regardless of what the client displays — purely a visual
+  consistency gap. A related, more visible symptom: if the daily limit gets reached via
+  a *different* device, the next attempt from the stale device surfaces a generic
+  "Algo ha ido mal" (`SubmitErrorOverlay`) instead of a clear "no attempts left" message,
+  because `GameRuntimeContext.submit()`'s `catch` block treats every thrown error the
+  same way (`SUBMIT_FAILURE`) without distinguishing a legitimate 400 (limit reached /
+  structurally invalid) from a real network failure. Fix requires: (1) add
+  `attemptsHistory: AttemptRecord[]` to `AttemptResult` so the Worker always returns the
+  authoritative full list on every attempt, (2) have the reducer replace instead of
+  append, (3) differentiate error types in `submit()`'s catch to show the correct
+  overlay/message.se

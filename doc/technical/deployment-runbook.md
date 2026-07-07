@@ -76,7 +76,7 @@ GOOGLE_CLIENT_SECRET=...
 SESSION_SIGNING_SECRET=...
 ```
 
-`wrangler dev` carga `.dev.vars` automáticamente — no requiere `wrangler secret put` para uso local.
+`wrangler dev` carga `.dev.vars` automáticamente — no requiere `npm exec wrangler -- secret put` para uso local.
 
 > en [explorer](http://localhost:8787/cdn-cgi/explorer) hay una UI para inspeccionar la BD
 

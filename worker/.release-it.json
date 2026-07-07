@@ -12,7 +12,7 @@
     }
   },
   "git": {
-    "commitMessage": "chore(worker): release worker v${version}",
+    "commitMessage": "chore(back): release v${version}",
     "tagName": "v${version}"
   },
   "npm": {

@@ -8,12 +8,7 @@
   "git": {
     "commitMessage": "chore: release v${version}",
     "tagName": "v${version}",
-    "commitsPath": [
-      "src/**",
-      "shared/**",
-      "public/**",
-      "index.html"
-    ]
+    "commitsPath": "./src ./shared ./public ./index.html"
   },
   "npm": {
     "publish": false

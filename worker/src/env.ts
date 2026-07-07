@@ -1,5 +1,7 @@
 import type { PlayerDO } from "./durable-objects/PlayerDO";
 
+export type SessionCookieSameSite = "Strict" | "Lax" | "None";
+
 export interface Env {
   PLAYER_DO: DurableObjectNamespace<PlayerDO>;
   DB: D1Database;
@@ -13,4 +15,5 @@ export interface Env {
   GOOGLE_ISSUER: string;
   ALLOWED_ORIGINS: string;
   FRONTEND_BASE_URL: string;
+  SESSION_COOKIE_SAME_SITE: SessionCookieSameSite;
 }

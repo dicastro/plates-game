@@ -1,6 +1,7 @@
 import { hmacSign } from "./hmac";
 import { isSupportedAuthProviderId } from "./authProviderRegistry";
 import type { AuthProviderId } from "../../../shared/types";
+import type { SessionCookieSameSite } from "../env";
 
 // Signs/verifies the httpOnly session cookie. Payload is intentionally
 // `${authProvider}:${externalProviderId}` — NOT the internal playerId —
@@ -12,15 +13,15 @@ import type { AuthProviderId } from "../../../shared/types";
 const COOKIE_NAME = "plates_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 90; // 90 days
 
-export async function createSessionCookie(secret: string, authProviderId: AuthProviderId, externalProviderId: string): Promise<string> {
+export async function createSessionCookie(secret: string, authProviderId: AuthProviderId, externalProviderId: string, sameSite: SessionCookieSameSite): Promise<string> {
   const payload = `${authProviderId}:${externalProviderId}`;
   const sig = await hmacSign(secret, payload);
   const value = `${payload}.${sig}`;
-  return `${COOKIE_NAME}=${encodeURIComponent(value)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${MAX_AGE_SECONDS}`;
+  return `${COOKIE_NAME}=${encodeURIComponent(value)}; HttpOnly; Secure; SameSite=${sameSite}; Path=/; Max-Age=${MAX_AGE_SECONDS}`;
 }
 
-export function clearSessionCookie(): string {
-  return `${COOKIE_NAME}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
+export function clearSessionCookie(sameSite: SessionCookieSameSite): string {
+  return `${COOKIE_NAME}=; HttpOnly; Secure; SameSite=${sameSite}; Path=/; Max-Age=0`;
 }
 
 /** Returns { authProviderId, externalProviderId } if the cookie is present and its signature is valid, else null. */

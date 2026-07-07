@@ -22,6 +22,7 @@ GOOGLE_ISSUER = "https://accounts.google.com"
 OAUTH_REDIRECT_BASE_URL = "http://localhost:8787"
 ALLOWED_ORIGINS = "http://localhost:5173"
 FRONTEND_BASE_URL = "http://localhost:5173"
+SESSION_COOKIE_SAME_SITE = "Lax"
 
 [[env.development.durable_objects.bindings]]
 name = "PLAYER_DO"
@@ -41,6 +42,7 @@ GOOGLE_ISSUER = "https://accounts.google.com"
 OAUTH_REDIRECT_BASE_URL = "https://plates-worker-staging.diegocastroviadero19.workers.dev"
 ALLOWED_ORIGINS = "https://plates-game.pages.dev"
 FRONTEND_BASE_URL = "https://plates-game.pages.dev"
+SESSION_COOKIE_SAME_SITE = "None"
 
 [[env.staging.durable_objects.bindings]]
 name = "PLAYER_DO"
@@ -60,6 +62,7 @@ GOOGLE_ISSUER = "https://accounts.google.com"
 OAUTH_REDIRECT_BASE_URL = "https://plates-worker.workers.dev"
 ALLOWED_ORIGINS = "https://plates-game.pages.dev"
 FRONTEND_BASE_URL = "https://plates-game.pages.dev"
+SESSION_COOKIE_SAME_SITE = "Lax"
 
 [[env.production.durable_objects.bindings]]
 name = "PLAYER_DO"

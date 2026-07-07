@@ -7,13 +7,13 @@ import { handleNormalEnter } from "./routes/normalEnter";
 import { handleNormalAttempt } from "./routes/normalAttempt";
 import { handlePlayerPrefs } from "./routes/playerPrefs";
 
+const LOGOUT = /^\/auth\/logout$/;
 const AUTH_START = /^\/auth\/([a-z]+)\/start$/;
 const AUTH_CALLBACK = /^\/auth\/([a-z]+)\/callback$/;
 
 type RouteEntry = { method: string; path: string; handler: (request: Request, env: Env) => Promise<Response> };
 
 const ROUTES: RouteEntry[] = [
-  { method: "POST", path: "/auth/logout", handler: handleLogout },
   { method: "GET", path: "/player/session", handler: handlePlayerSession },
   { method: "POST", path: "/normal/enter", handler: handleNormalEnter },
   { method: "POST", path: "/normal/attempt", handler: handleNormalAttempt },
@@ -22,6 +22,9 @@ const ROUTES: RouteEntry[] = [
 
 async function route(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
+
+  const logoutMatch = url.pathname.match(LOGOUT);
+  if (logoutMatch && request.method === "POST") return handleLogout(env);
 
   const startMatch = url.pathname.match(AUTH_START);
   if (startMatch && request.method === "GET") return handleAuthStart(request, env, startMatch[1]);

@@ -4,7 +4,12 @@
       "preset": "conventionalcommits",
       "infile": "CHANGELOG.md",
       "gitRawCommitsOpts": {
-        "args": ["--", ".", ":(exclude)worker"]
+        "path": [
+          "src",
+          "shared",
+          "public",
+          "index.html"
+        ]
       }
     }
   },

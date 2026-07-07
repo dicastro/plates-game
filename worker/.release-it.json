@@ -2,13 +2,18 @@
   "plugins": {
     "@release-it/conventional-changelog": {
       "preset": "conventionalcommits",
-      "infile": "CHANGELOG.md"
+      "infile": "CHANGELOG.md",
+      "gitRawCommitsOpts": {
+        "path": [
+          ".",
+          "../shared"
+        ]
+      }
     }
   },
   "git": {
     "commitMessage": "chore(worker): release worker v${version}",
-    "tagName": "v${version}",
-    "commitsPath": ". ../shared"
+    "tagName": "v${version}"
   },
   "npm": {
     "publish": false

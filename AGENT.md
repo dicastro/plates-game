@@ -124,6 +124,12 @@ doc/technical/    ← security-anticheat, audio-engine, platform-strategy,
 - Never use `new Date()` for game timing — the Worker is the sole authority on "what day it
   is" for any game-logic purpose.
 - See `doc/technical/security-anticheat.md` for full details.
+- **Repository visibility**: this GitHub repository is currently **public**
+  (required for AI-tooling access) — never assume repository privacy as a
+  safety net when judging whether something is safe to commit. Actual
+  secrets (API keys, client secrets, signing secrets) always go through
+  `wrangler secret` / `.dev.vars` / `.gitignore`, regardless of the
+  README's license statement, which concerns copyright terms only.
 
 ### 13. Asset Restrictions
 - **Zero-Raster Policy:** No PNG/JPG/WebP/GIF. All graphics via inline SVG or Tailwind.
@@ -151,6 +157,21 @@ doc/technical/    ← security-anticheat, audio-engine, platform-strategy,
 - An entry is removed once implemented, or once promoted into a proper spec
   section in `/doc` (at which point the spec is the source of truth, not the
   backlog line).
+
+### 16. Context Provider Callback Stability
+- Every function exposed by a Context Provider's value (navigate, updatePlayer,
+  initialize, submit, etc.) must have a stable identity across re-renders —
+  wrap in `useCallback`, with an empty dependency array whenever possible.
+- If the function needs to read current state without depending on it (to
+  keep the array empty), mirror that state into a `useRef` and read from the
+  ref inside the callback, instead of closing over the state value directly.
+- Rationale: an unstable function used as a `useEffect` dependency re-fires
+  that effect on every Provider re-render — this can cause infinite loops
+  (state update → new function identity → effect re-fires → state update...)
+  or unnecessary listener churn. See `doc/technical/state-architecture.md`
+  §8 for the full mechanism and reference implementations.
+- Applies to every Context Provider in `src/`. Check new Providers against
+  this rule before merging — do not assume only existing ones need it.
 
 ---
 

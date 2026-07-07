@@ -1,0 +1,74 @@
+name = "plates-worker"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PlayerDO"]
+
+[[durable_objects.bindings]]
+name = "PLAYER_DO"
+class_name = "PlayerDO"
+
+# D1 database_id values are placeholders — populate after running
+# `wrangler d1 create plates-db-staging` / `plates-db-production`.
+
+[env.development]
+[env.development.vars]
+GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/auth"
+GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
+GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
+GOOGLE_ISSUER = "https://accounts.google.com"
+OAUTH_REDIRECT_BASE_URL = "http://localhost:8787"
+ALLOWED_ORIGINS = "http://localhost:5173"
+FRONTEND_BASE_URL = "http://localhost:5173"
+
+[[env.development.durable_objects.bindings]]
+name = "PLAYER_DO"
+class_name = "PlayerDO"
+
+[[env.development.d1_databases]]
+binding = "DB"
+database_name = "plates-db-staging"
+database_id = "0accb7aa-1393-4166-92ca-cb340658addc"
+
+[env.staging]
+[env.staging.vars]
+GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/auth"
+GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
+GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
+GOOGLE_ISSUER = "https://accounts.google.com"
+OAUTH_REDIRECT_BASE_URL = "https://plates-worker-staging.diegocastroviadero19.workers.dev"
+ALLOWED_ORIGINS = "https://plates-game.pages.dev"
+FRONTEND_BASE_URL = "https://plates-game.pages.dev"
+
+[[env.staging.durable_objects.bindings]]
+name = "PLAYER_DO"
+class_name = "PlayerDO"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "plates-db-staging"
+database_id = "0accb7aa-1393-4166-92ca-cb340658addc"
+
+[env.production]
+[env.production.vars]
+GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/auth"
+GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
+GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
+GOOGLE_ISSUER = "https://accounts.google.com"
+OAUTH_REDIRECT_BASE_URL = "https://plates-worker.workers.dev"
+ALLOWED_ORIGINS = "https://plates-game.pages.dev"
+FRONTEND_BASE_URL = "https://plates-game.pages.dev"
+
+[[env.production.durable_objects.bindings]]
+name = "PLAYER_DO"
+class_name = "PlayerDO"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "plates-db-production"
+database_id = "5bb0401f-9b3c-4f5b-aee5-08ac3602724b"
+
+# Secrets (OAuth client secret, cookie-signing key) are never declared here —
+# set via `wrangler secret put <NAME> --env <staging|production>`.

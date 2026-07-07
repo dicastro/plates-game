@@ -1,0 +1,1 @@
+export const DICT_TARGET_LANG = import.meta.env.VITE_DICT_TARGET as string;

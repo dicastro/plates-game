@@ -54,3 +54,11 @@ languages, and never scoped by the player's interface language — see
 `doc/technical/worker-architecture.md` §6. Travel Mode and Remote Mode have their own
 independent, room-scoped rankings (see `doc/functional/game-modes.md`) and do not contribute
 to `normalModeScore`.
+
+## 6. Status — Provisional
+
+The current `calculateAttemptScore` implementation follows §2-3 literally, but the
+model itself is open for revision: per-bonus-type multipliers (not just jackpot vs.
+non-jackpot), word difficulty (model undefined), and a per-attempt-number penalty
+(1st attempt vs. 5th) are all pending a full scoring redesign. `PLATE_SCORING_BASE_SCORE`
+itself is also unconfirmed. See `doc/NEXT_STEPS.md`.

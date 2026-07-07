@@ -7,12 +7,15 @@
   },
   "git": {
     "commitMessage": "chore: release v${version}",
-    "tagName": "v${version}"
+    "tagName": "v${version}",
+    "commitsPath": "src shared public index.html"
   },
   "npm": {
     "publish": false
   },
   "hooks": {
-    "before:init": ["npm run build"]
+    "before:init": [
+      "npm run build"
+    ]
   }
 }

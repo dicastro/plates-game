@@ -119,18 +119,21 @@ interface NavigationState {
 ## 5. Splash Screen Sequence
 
 Theme resolution happens before Splash renders its first frame — purely local and
-synchronous (see `doc/technical/theming-architecture.md`), no network dependency.
+synchronous, no network dependency.
 
-Splash resolves the session via `PlatformService.initialize()`. If a valid session exists, it navigates to `HOME`; otherwise it navigates to `LOGIN`. The What's New check (unread content opening the `WHATS_NEW` overlay) is not yet implemented — to be wired once that system exists.
+Splash always navigates to `HOME` after the forced delay, with one exception: if the
+URL carries a `?intent=` query param (set by the Worker's OAuth callback redirect —
+see `doc/technical/worker-architecture.md` §4), Splash resolves the session once via
+`PlayerSessionContext.initialize()` and navigates directly to that intent screen
+instead of `HOME`.
 
-**Note on timing:** there is no canonical-UTC-epoch fetch in this sequence. The cosmetic
-date used for theme resolution is local-only. The authoritative UTC epoch used for
-anti-cheat is never fetched preemptively in Splash — it is resolved lazily by the
-Cloudflare Worker at score-submission time. See `doc/technical/security-anticheat.md`.
+No screen requires an authenticated session to be reached. `HomeScreen` triggers its
+own idempotent session check on mount (`PlayerSessionContext.initialize()`), silently
+enriching the screen once a session resolves; session is only required per-action
+(e.g. pressing "Play"), gated via `navigateToLogin(intent)`.
 
-**Audio:** the Splash is silent. Browser autoplay policy blocks audio playback without a
-prior user gesture, regardless of a player's saved `audio.enabled` preference. No
-ambient/menu audio architecture is defined yet — see `doc/technical/audio-engine.md`.
+**Audio:** Splash is silent. Browser autoplay policy blocks audio without a prior user
+gesture, regardless of any saved preference.
 
 If platform initialization fails (network unavailable), the game falls back to
 `MemoryPlatform` behavior and displays a non-blocking offline warning banner.

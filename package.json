@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "dev:cf": "vite --host 0.0.0.0 --mode cf-development",
     "dev:cf:stg": "vite --mode cf-staging",
     "build": "tsc -b && vite build",
     "preview": "vite preview",

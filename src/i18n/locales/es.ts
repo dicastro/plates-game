@@ -64,6 +64,11 @@ const es: TranslationSchema = {
       scrollToEnd: "Desplazar al final",
     },
   },
+  login: {
+    providers: {
+      google: "Accede con Google",
+    }
+  }
 };
 
 export default es;

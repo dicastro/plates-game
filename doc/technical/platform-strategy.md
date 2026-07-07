@@ -10,12 +10,12 @@ know anything about Cloudflare directly — they only call `PlatformService` met
 
 | Method | Description |
 |---|---|
-| `initialize(): Promise<PlayerProfile \| null>` | Checks for an existing valid session and returns the player's profile if found, null otherwise. |
-| `login(provider: AuthProviderId): Promise<void>` | Starts the OAuth full-page redirect flow for the given provider. |
+| `initialize(lang: string): Promise<PlayerProfile \| null>` | Checks for an existing valid session and returns the player's profile if found, null otherwise. |
+| `login(provider: AuthProviderId, intent?: string): Promise<void>` | Starts the OAuth full-page redirect flow for the given provider. |
 | `logout(): Promise<void>` | Clears the Worker-issued session. |
 | `enterNormalMode(lang: string): Promise<NormalModeStatus>` | Authoritative read: today's puzzle + the player's current attempts/score/streak for `lang`. |
 | `submitAttempt(lang: string, word: string): Promise<AttemptResult>` | Submits a structurally-valid attempt. The Worker validates, scores, and updates the Durable Object. |
-| `markRulesIntroSeen(): Promise<void>` | Persists `hasSeenRulesIntro = true` on the player's profile. Called once, the first time the player dismisses the rules overlay with "don't show again". |
+| `markRulesIntroSeen(lang: string): Promise<void>` | Persists `hasSeenRulesIntro = true` on the player's profile. Called once, the first time the player dismisses the rules overlay with "don't show again". |
 | `onPause(callback): void` / `onResume(callback): void` | Page Visibility API wiring. |
 | `showRewardedAd(): Promise<boolean>` | Delegates to the active `AdProvider`; resolves `true` if the rewarded flow completed. |
 
@@ -25,10 +25,9 @@ know anything about Cloudflare directly — they only call `PlatformService` met
 interface PlayerProfile {
   alias: string;
   country: string;
-  normalModeScore: number;
-  currentStreakDays: number;
-  hasSeenRulesIntro: boolean; // persisted via markRulesIntroSeen()
-  adsEnabled: boolean;        // when false, rewarded-ad button is never rendered
+  dailyStreak: number;
+  hasSeenRulesIntro: boolean; // resolved per queried lang on the Worker side
+  adsEnabled: boolean;
 }
 
 interface AttemptRecord {
@@ -66,13 +65,13 @@ interface AttemptResult {
   OAuth round-trip to simulate locally.
 
 ### `CloudflarePlatform` (`VITE_PLATFORM_TARGET=CLOUDFLARE`)
-- The **only production strategy** — Cloudflare is no longer a secondary/demo target (see
-  `AI_CONTEXT.md`).
-- Communicates with the Cloudflare Worker over HTTPS. Session is a Worker-issued
-  `httpOnly`/`Secure` cookie; the client never reads, stores, or transmits any token
-  directly — the browser handles this automatically on every request.
-- All game-authority methods (`enterNormalMode`, `submitAttempt`) are pure request/response —
-  the client never asserts its own state, only sends actions.
+- The only production strategy.
+- Communicates with the Cloudflare Worker over HTTPS via thin `fetch()` wrappers
+  (`credentials: "include"`) against the endpoints in `worker-architecture.md` §5.
+- `login()` performs a full-page redirect and returns a promise that deliberately
+  never resolves — the page navigates away before that would matter.
+- Requires the frontend's origin to be present in the Worker's `ALLOWED_ORIGINS` for
+  that environment (see `worker-architecture.md` §11).
 
 ## 4. Factory
 

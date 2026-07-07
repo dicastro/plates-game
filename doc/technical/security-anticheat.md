@@ -24,23 +24,20 @@ Both are pure in-memory lookups inside the Worker process. See
 
 ## 4. Per-Player Authoritative State — Durable Objects
 
-Each player has exactly one Durable Object instance, keyed by `playerId`, holding:
+Each player has exactly one Durable Object, keyed by `playerId`, with two SQL tables
+(`ctx.storage.sql` — see `AI_CONTEXT.md` decision 20):
 
-```
-{
-  daySeed: string,              // which day attemptsUsedToday/bestScoreToday refer to
-  attemptsUsedToday: number,
-  bestScoreToday: number,       // provisional, see §6
-  normalModeScore: number,      // consolidated, monotonically increasing
-  lastDaySeedPlayed: string,
-  currentStreakDays: number
-}
-```
+- `player` (single row): `player_id`, `auth_provider_id`, `external_provider_id`,
+  `alias`, `country`, `ads_enabled`.
+- `normal_mode_lang_state` (one row per `lang`): today's working state
+  (`attempts_used_today`, `today_best_score`, `today_attempts_json`) plus period
+  buckets (week/month/year current+previous, `lifetime_total_up_to_yesterday`,
+  `daily_streak`).
 
-The Durable Object model serializes all operations on a given player, eliminating race
-conditions between concurrent requests without manual locking — this is the actual mechanism
-preventing a player from, for example, firing two simultaneous attempts to bypass the daily
-limit.
+The Durable Object serializes all operations on a given player, eliminating race
+conditions between concurrent requests without manual locking — this is the actual
+mechanism preventing a player from, for example, firing two simultaneous attempts to
+bypass the daily limit.
 
 ## 5. Attempt Validation Flow
 

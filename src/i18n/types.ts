@@ -62,4 +62,9 @@ export interface TranslationSchema {
       scrollToEnd: string;
     };
   };
+  login: {
+    providers: {
+      google: string;
+    }
+  }
 }

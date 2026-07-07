@@ -25,15 +25,21 @@ D1 (queryable leaderboard projection).
 
 ### Multi-Language Distribution
 
-The game ships as **one independent build per dictionary language** (starting with Spanish,
-`es`; English, `en`, planned for a later phase). Each language build has its own domain/route,
-its own dictionary, its own daily plate sequence, and its **own independent leaderboard** —
-rankings are never mixed across languages. A single Worker deployment serves all language
-variants, parametrized by an explicit `lang` value on every request; adding a new language
-means adding new bundled data and a new D1/Durable Object binding set, not new Worker code.
+A single Vite build configuration (parametrized by `VITE_DICT_TARGET` at build time)
+is deployed independently once per supported dictionary language (starting with
+Spanish, `es`; English, `en`, planned for a later phase). Each deployment has its own
+domain, its own interface language (implied by `VITE_DICT_TARGET`), and its own
+independent leaderboard — rankings are never mixed across languages, and the
+leaderboard is scoped by the dictionary/plate language, never by the player's
+interface language.
 
+The Worker is a single deployment that serves every language variant. Every endpoint
+takes an explicit `lang` parameter — never inferred from the caller's domain — so the
+same Worker code serves all game deployments. Adding a new language means: one new
+game deployment (new `VITE_DICT_TARGET` value, new domain), one new bundled
+dictionary/plate-sequence segment in the Worker, and one new D1/Durable Object
+binding set — not new Worker code.
 
-Each language build has its own domain/route, its own dictionary, its own daily plate sequence, and its own independent leaderboard — rankings are never mixed across languages. The leaderboard is scoped by the dictionary/plate language (lang), never by the player's interface language — a player using the Spanish-plate game with an English interface still competes on the Spanish-plate leaderboard.
 ---
 
 ## Key Architectural Decisions & Rationale
@@ -292,6 +298,61 @@ debounce (150ms) instead — a throttle per-key would allow rapid alternation
 between two keys at full speed, which is the correct behavior for typing. A
 single shared debounce prevents double-fires from mouse/touch event overlap
 without blocking natural fast typing across different keys.
+
+### 19. Auth Provider Registry — Generic Multi-Provider Design
+
+`AuthProvider` is a Worker-side interface (`buildAuthorizationUrl`, `handleCallback`)
+resolved through `authProviderRegistry.ts`, keyed by `AuthProviderId` (a type shared
+with the client via `shared/types.ts`, so both sides always agree on which provider
+IDs are valid). Routes are generic (`/auth/:provider/start`, `/auth/:provider/callback`)
+— adding a new provider means one new `AuthProvider` implementation plus one registry
+entry, no route changes. `GoogleAuthProvider` verifies the `id_token` by fetching
+Google's JWK Set (`/oauth2/v3/certs`) and validating the RS256 signature via Web
+Crypto — not the `/oauth2/v1/certs` X.509 certificate endpoint, which requires
+extracting a public key from a certificate first and has no native Web Crypto import
+path. Client-side, `LoginScreen` iterates `SUPPORTED_AUTH_PROVIDERS` to render one
+button per provider.
+
+### 20. PlayerDO Storage — SQLite Tables, Not the KV API
+
+`PlayerDO` uses `ctx.storage.sql` (real SQL tables: `player`, `normal_mode_lang_state`),
+not the legacy KV-style `ctx.storage.get/put`. This is Cloudflare's own recommended
+storage backend for all new Durable Object classes regardless of billing plan — not a
+free-plan-only requirement — and it does not change storage billing (SQLite storage is
+billed the same way whether accessed via the KV API or the SQL API; the KV API simply
+persists into a hidden `__cf_kv` table that is excluded from SQL queries by Cloudflare's
+own design, making the data invisible to any SQL inspector regardless of tooling used).
+Tables are created via `ctx.blockConcurrencyWhile()` in the constructor, before any
+request is processed. This also makes the DO's data visible in Wrangler's Local
+Explorer (`/cdn-cgi/explorer`) during local development — see
+`doc/technical/local-development.md`.
+
+### 21. Ranking Model — Closed-Period Projection Only
+
+`player_period_stats` (D1) holds one row per `(player, lang)` with only **closed**
+period totals (previous week/month/year, lifetime-up-to-yesterday) plus denormalized
+`alias`/`country`. It never stores per-day history — a "last week" ranking query reads
+directly from `previous_week_total` rather than aggregating daily rows. The row is
+written exactly once per lang, exclusively from the Durable Object's lazy daily
+rollover (triggered on the next request after a `daySeed` change) — never from a
+same-day attempt. Consequence, worth remembering: a period's contribution to the
+ranking only lands once the player plays again on a later day; a player who stops
+mid-period is not retroactively included in that period's closed totals for ranking
+purposes. The actual leaderboard **read** endpoints (with a Cache API layer keyed by
+UTC-midnight TTL) are designed but not yet implemented — see `doc/NEXT_STEPS.md`.
+
+### 22. Login Gating Model — Home Reachable Without a Session
+
+`HOME` never requires authentication — `SplashScreen` always navigates there (no
+forced session check on cold start). `PlayerSessionContext.initialize()` is idempotent
+(dedup via `isLoaded` + an in-flight promise ref) and is triggered lazily: once by
+`HomeScreen` on mount (to silently enrich the screen if a session already exists), and
+again by any action that actually requires a session (e.g. pressing "Play"). Login is
+gated per-action via `navigateToLogin(intent)`, which stores the screen the player was
+trying to reach; that intent travels inside the OAuth `state` token (already used for
+CSRF) round-trip and comes back as a `?intent=` query param on the Worker's redirect to
+`FRONTEND_BASE_URL`, letting `SplashScreen` land the player directly back on what they
+were doing instead of a bare `HOME` after the full-page OAuth redirect/reload.
 
 ---
 

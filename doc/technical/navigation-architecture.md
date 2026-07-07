@@ -48,10 +48,11 @@ export interface SessionContext {
   utcEpoch: number;      // server-provided on room creation/join
 }
 
-export interface NavigationState {
+interface NavigationState {
   screen: AppScreen;
   overlay: AppOverlay;
   sessionContext: SessionContext | null;
+  pendingIntent: AppScreen | null;
 }
 ```
 

@@ -118,3 +118,15 @@ npm run release:dry
 | Documentation or non-user-facing changes | No bump |
 
 See `doc/functional/versioning-changelog.md` for the full versioning policy.
+
+---
+
+## Independent Versioning — Game vs. Worker
+
+The game client (root `package.json`) and the Worker (`worker/package.json`) version
+and release independently, each with its own `.release-it.json`, `CHANGELOG.md`, and
+tag prefix. Each config's `git.commitsPath` scopes which commits
+count toward that package's version — see `doc/technical/build-pipeline.md`. Release
+the game from the repo root (`npm run release`); release the Worker from `worker/`
+(`cd worker && npm run release`). These are entirely separate release runs — never
+combined into one command.

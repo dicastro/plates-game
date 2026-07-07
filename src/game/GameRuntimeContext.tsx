@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useRef, type ReactNode } from "react";
+import { createContext, useContext, useReducer, useRef, useCallback, type ReactNode } from "react";
 import { platformService } from "../platform/platformServiceInstance";
 import { usePlayerSession } from "../player/PlayerSessionContext";
 import type { AttemptResult } from "../platform/PlatformService";
@@ -123,45 +123,34 @@ export function GameRuntimeProvider({
     attemptsHistory: config.initialAttemptsHistory,
   });
 
-  function typeLetter(letter: string) {
-    dispatch({ type: "TYPE_LETTER", letter });
-  }
+  // Mirrors `state` so `submit` can read current values without needing
+  // `state` in its dependency array — same ref-mirror technique as
+  // PlayerSessionContext/NavigationContext.
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
-  function backspace() {
-    dispatch({ type: "BACKSPACE" });
-  }
+  // `dispatch` is already stable (React guarantee for useReducer) — these
+  // wrappers just need their OWN identity to be stable too.
+  const typeLetter = useCallback((letter: string) => dispatch({ type: "TYPE_LETTER", letter }), []);
+  const backspace = useCallback(() => dispatch({ type: "BACKSPACE" }), []);
+  const expandKeyboard = useCallback(() => dispatch({ type: "EXPAND_KEYBOARD" }), []);
+  const collapseKeyboard = useCallback(() => dispatch({ type: "COLLAPSE_KEYBOARD" }), []);
+  const openOverlay = useCallback((overlay: Exclude<ActiveOverlay, null>) => dispatch({ type: "OPEN_OVERLAY", overlay }), []);
+  const closeOverlay = useCallback(() => dispatch({ type: "CLOSE_OVERLAY" }), []);
 
-  function expandKeyboard() {
-    dispatch({ type: "EXPAND_KEYBOARD" });
-  }
-
-  function collapseKeyboard() {
-    dispatch({ type: "COLLAPSE_KEYBOARD" });
-  }
-
-  function openOverlay(overlay: Exclude<ActiveOverlay, null>) {
-    dispatch({ type: "OPEN_OVERLAY", overlay });
-  }
-
-  function closeOverlay() {
-    dispatch({ type: "CLOSE_OVERLAY" });
-  }
-
-  async function submit() {
+  const submit = useCallback(async () => {
     if (isSubmittingRef.current) return;
-    isSubmittingRef.current = true
+    isSubmittingRef.current = true;
 
     dispatch({ type: "SUBMIT_START" });
-    const bestScoreBeforeThisCall = state.bestScore;
+    const bestScoreBeforeThisCall = stateRef.current.bestScore;
+    const wordToSubmit = stateRef.current.typedWord;
 
     try {
-      const result = await platformService.submitAttempt(config.lang, state.typedWord);
-
+      const result = await platformService.submitAttempt(config.lang, wordToSubmit);
       const outcome: SubmitOutcome = !result.valid
         ? "INVALID"
-        : result.scoreThisAttempt > bestScoreBeforeThisCall
-          ? "NEW_BEST"
-          : "VALID_NOT_BEST";
+        : result.scoreThisAttempt > bestScoreBeforeThisCall ? "NEW_BEST" : "VALID_NOT_BEST";
 
       updatePlayer(result.player);
       dispatch({ type: "SUBMIT_SUCCESS", result, outcome });
@@ -170,7 +159,7 @@ export function GameRuntimeProvider({
     } finally {
       isSubmittingRef.current = false;
     }
-  }
+  }, [config.lang, updatePlayer]);
 
   const isSubmitEnabled = isStructurallyValid(state.typedWord, config.consonants);
 

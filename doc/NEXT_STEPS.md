@@ -22,6 +22,31 @@ Backlog of deferred items. Not detailed specs — each entry points to where the
 
 - **BonusInfoOverlay word-count table.** `BonusInfoOverlay` renders a placeholder with a TODO comment. The per-length word count data must be added to `NormalModeStatus.puzzle` and surfaced by the Worker's `/normal/enter` endpoint. See `doc/technical/worker-architecture.md` §5.
 
-- **`worker-architecture.md` §5 — `attemptsHistory` in enter response.** The `POST /normal/enter` endpoint must return the full `attemptsHistory` array for the current day, not just `attemptsUsedToday`. Document this in the Worker architecture spec once the Worker is implemented.
+- **Leaderboard read endpoints.** D1 schema and write path exist (`player_period_stats`);
+  `GET /leaderboard/:lang` (+ `?country=`) with a Cache API layer (TTL to next UTC
+  midnight) is designed but not implemented. See `doc/technical/worker-architecture.md` §6.
 
-- **`markRulesIntroSeen` Worker endpoint.** `PlatformService.markRulesIntroSeen()` is implemented in `MemoryPlatform` (in-memory mutation) but `CloudflarePlatform` throws. Needs a Worker endpoint (e.g. `POST /player/prefs`) that persists `hasSeenRulesIntro` on the player's Durable Object.
+- **Full scoring model redesign.** Current formula is a literal implementation of
+  `doc/functional/scoring.md` §2-3, explicitly flagged provisional: per-bonus-type
+  multipliers, word difficulty (model undefined), and an attempt-number penalty are
+  all open. Also resolves the `PlateHeader.tsx::isJackpot()` badge bug (treats `"sum"`
+  as jackpot when it isn't). See `doc/functional/scoring.md` §6.
+
+- **Country tracking & player-selectable active country.** Track a per-`lang` map of
+  country → attempt count on the Durable Object; expose a Settings section letting the
+  player choose their active ranking country among ones they've actually played from
+  (not the full country list). See `AI_CONTEXT.md` decision 8 addendum.
+
+- **`release-it` `commitsPath` cross-directory validation.** `worker/.release-it.json`
+  uses `". ../shared"` to include `shared/`-only commits in the worker's version
+  candidacy — unverified whether git resolves `../shared` correctly from that CWD.
+  Validate with `--dry-run` before the first real worker release; adjust if needed.
+
+- **OAuth callback redirect is not language-aware.** `FRONTEND_BASE_URL` (Worker env
+  var) is a single fixed value per Worker environment, but the game will eventually be
+  deployed N times (one per language), each on its own domain. The Worker has no way
+  to know which of those N frontend domains initiated a given login request, so the
+  callback redirect only works correctly while a single frontend domain exists per
+  environment. Needs a solution before the second language deployment — e.g. passing
+  the originating frontend origin through the OAuth `state` token itself, the same way
+  `intent` already travels through it. See `doc/technical/worker-architecture.md` §4.

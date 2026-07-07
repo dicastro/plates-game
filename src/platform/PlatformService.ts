@@ -1,51 +1,18 @@
 import { MemoryPlatform } from "./MemoryPlatform";
 import { CloudflarePlatform } from "./CloudflarePlatform";
+import type { PlayerProfile, AttemptRecord, NormalModeStatus, AttemptResult, AuthProviderId } from "../../shared/types";
 
-export interface PlayerProfile {
-  alias: string;
-  country: string;
-  normalModeScore: number;
-  currentStreakDays: number;
-  hasSeenRulesIntro: boolean;
-  adsEnabled: boolean;
-}
+export type { PlayerProfile, AttemptRecord, NormalModeStatus, AttemptResult, AuthProviderId };
 
-export interface AttemptRecord {
-  word: string;
-  valid: boolean;
-  score: number;
-}
-
-export interface NormalModeStatus {
-  daySeed: string;
-  puzzle: {
-    consonants: string[];
-    digits: string;
-    bonusType: "none" | "sum" | "pairs" | "trio" | "quartet" | "palindrome";
-  };
-  attemptsUsedToday: number;
-  bestScoreToday: number;
-  attemptsHistory: AttemptRecord[];
-  player: PlayerProfile;
-}
-
-export interface AttemptResult {
-  valid: boolean;
-  scoreThisAttempt: number;
-  attemptsUsedToday: number;
-  bestScoreToday: number;
-  player: PlayerProfile;
-}
-
-export type AuthProviderId = "google";
+export const SUPPORTED_AUTH_PROVIDERS: readonly AuthProviderId[] = ["google"];
 
 export interface PlatformService {
-  initialize(): Promise<PlayerProfile | null>;
-  login(provider: AuthProviderId): Promise<void>;
+  initialize(lang: string): Promise<PlayerProfile | null>;
+  login(provider: AuthProviderId, intent?: string): Promise<void>;
   logout(): Promise<void>;
   enterNormalMode(lang: string): Promise<NormalModeStatus>;
   submitAttempt(lang: string, word: string): Promise<AttemptResult>;
-  markRulesIntroSeen(): Promise<void>;
+  markRulesIntroSeen(lang: string): Promise<void>;
   onPause(callback: () => void): void;
   onResume(callback: () => void): void;
   showRewardedAd(): Promise<boolean>;

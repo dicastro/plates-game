@@ -62,4 +62,9 @@ the browser console (F12):
 
 ---
 
-License: Private / Proprietary. Developed by Diego Castro Viadero.
+License: Proprietary — All Rights Reserved. Developed by Diego Castro Viadero.
+
+> Note: this repository's GitHub visibility is currently **public** — required
+> for AI-tooling access to the project during development. This license line
+> concerns copyright/usage terms only, not repo visibility. See `AGENT.md` for
+> the rule on what must never be committed regardless of visibility.

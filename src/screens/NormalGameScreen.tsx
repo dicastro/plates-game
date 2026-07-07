@@ -6,13 +6,13 @@ import type { NormalModeStatus } from "../platform/PlatformService";
 import type { GameConfig } from "../game/types";
 import GameEngine from "../game/GameEngine";
 import ScreenContainer from "../components/ScreenContainer";
-
-const NORMAL_MODE_LANG = import.meta.env.VITE_DICT_TARGET as string;
+import { usePlayerSession } from "../player/PlayerSessionContext";
+import { DICT_TARGET_LANG } from "../config/locale";
 
 function buildConfig(status: NormalModeStatus, onExit: () => void): GameConfig {
   return {
     mode: "NORMAL",
-    lang: NORMAL_MODE_LANG,
+    lang: DICT_TARGET_LANG,
     attemptsLimit: NORMAL_MODE_DAILY_ATTEMPTS_LIMIT,
     countdownSeconds: null,
     consonants: status.puzzle.consonants,
@@ -27,20 +27,22 @@ function buildConfig(status: NormalModeStatus, onExit: () => void): GameConfig {
 
 export default function NormalGameScreen() {
   const { navigate } = useNavigation();
+  const { updatePlayer } = usePlayerSession();
   const [config, setConfig] = useState<GameConfig | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    platformService.enterNormalMode(NORMAL_MODE_LANG).then((status) => {
+    platformService.enterNormalMode(DICT_TARGET_LANG).then((status) => {
       if (cancelled) return;
+      updatePlayer(status.player);
       setConfig(buildConfig(status, () => navigate("HOME")));
     });
 
     return () => {
       cancelled = true;
     };
-  }, [navigate]);
+  }, [navigate, updatePlayer]);
 
   if (!config) {
     return (

@@ -25,7 +25,10 @@ doc/
     ├── platform-strategy.md       ← PlatformService interface, strategies, env vars
     ├── worker-architecture.md     ← Worker endpoints, Durable Objects/D1 model, OAuth flow, KV-less storage strategy
     ├── build-pipeline.md          ← Vite config, obfuscation, ZIP packaging
+    ├── local-development.md       ← Local Explorer, SQL inspection, resetting local state
+    ├── deployment-runbook.md      ← Google Console setup, D1/secrets/environments step-by-step
     └── i18n-architecture.md       ← UI strings layer, player updates layer, locale detection
+
 ```
 
 ---

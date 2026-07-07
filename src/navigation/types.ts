@@ -34,4 +34,5 @@ export interface NavigationState {
   screen: AppScreen;
   overlay: AppOverlay;
   sessionContext: SessionContext | null;
+  pendingIntent: AppScreen | null;
 }

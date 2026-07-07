@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import { audioEngine } from "./audioEngineInstance";
 import { platformService } from "../platform/platformServiceInstance";
 
@@ -34,29 +34,30 @@ export function AudioRuntimeProvider({ children }: { children: ReactNode }) {
   const lastSeedRef = useRef<number | null>(null);
   const isMutedRef = useRef(false); // mirrors isMuted synchronously, for use inside callbacks registered once
 
-  function play(seed: number) {
+  const play = useCallback((seed: number) => {
     wantsAudioRef.current = true;
     lastSeedRef.current = seed;
-
     if (pausedByVisibilityRef.current) return;
-
     audioEngine.start(seed);
     audioEngine.setMute(isMutedRef.current);
     setIsPlaying(true);
-  }
+  }, []);
 
-  function stop() {
+
+  const stop = useCallback(() => {
     wantsAudioRef.current = false;
     audioEngine.stop();
     setIsPlaying(false);
-  }
+  }, []);
 
-  function toggleMute() {
-    const next = !isMuted;
-    isMutedRef.current = next;
-    setIsMuted(next);
-    audioEngine.setMute(next);
-  }
+  const toggleMute = useCallback(() => {
+    setIsMuted((prev) => {
+      const next = !prev;
+      isMutedRef.current = next;
+      audioEngine.setMute(next);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     platformService.onPause(() => {

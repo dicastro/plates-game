@@ -1,9 +1,10 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 import type { AppScreen, AppOverlay, SessionContext, NavigationState } from "./types";
 
 interface NavigationContextValue {
   state: NavigationState;
   navigate: (screen: AppScreen, sessionContext?: SessionContext | null) => void;
+  navigateToLogin: (intent: AppScreen) => void;
   openOverlay: (overlay: Exclude<AppOverlay, null>) => void;
   closeOverlay: () => void;
 }
@@ -15,26 +16,35 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     screen: "SPLASH",
     overlay: null,
     sessionContext: null,
+    pendingIntent: null,
   });
 
-  function navigate(screen: AppScreen, sessionContext?: SessionContext | null) {
+  // All four use the functional setState form — no closure over `state` —
+  // so useCallback([]) gives each a permanently stable identity. Same fix
+  // as PlayerSessionContext, same root cause avoided.
+  const navigate = useCallback((screen: AppScreen, sessionContext?: SessionContext | null) => {
     setState((prev) => ({
       screen,
       overlay: null,
       sessionContext: sessionContext === undefined ? prev.sessionContext : sessionContext,
+      pendingIntent: null,
     }));
-  }
+  }, []);
 
-  function openOverlay(overlay: Exclude<AppOverlay, null>) {
+  const navigateToLogin = useCallback((intent: AppScreen) => {
+    setState((prev) => ({ ...prev, screen: "LOGIN", overlay: null, pendingIntent: intent }));
+  }, []);
+
+  const openOverlay = useCallback((overlay: Exclude<AppOverlay, null>) => {
     setState((prev) => ({ ...prev, overlay }));
-  }
+  }, []);
 
-  function closeOverlay() {
+  const closeOverlay = useCallback(() => {
     setState((prev) => ({ ...prev, overlay: null }));
-  }
+  }, []);
 
   return (
-    <NavigationContext.Provider value={{ state, navigate, openOverlay, closeOverlay }}>
+    <NavigationContext.Provider value={{ state, navigate, navigateToLogin, openOverlay, closeOverlay }}>
       {children}
     </NavigationContext.Provider>
   );

@@ -85,3 +85,22 @@ All providers are composed in `src/app/AppProviders.tsx`. None of them depends o
 the *provider definition* level — nesting order is for readability only. Hooks that combine
 multiple contexts (e.g. `useAudio`) do so at the *consuming component* level, where every
 provider is already available regardless of nesting order.
+
+## 8. Context Provider Callback Stability
+
+**Problem:** a function exposed by a Provider's Context value gets a new identity on
+every render unless memoized. If a consuming component's `useEffect` lists that
+function as a dependency, an unstable identity re-fires the effect on every Provider
+render — this can produce an infinite loop when the effect's own side effect causes a
+Provider re-render, or unnecessary listener churn (e.g. a keydown handler removed and
+re-added on every keystroke).
+
+**Solution:** every function exposed by a Context Provider's value is wrapped in
+`useCallback`. Where the function needs to read current state without depending on it
+(to keep the dependency array empty), that state is mirrored into a `useRef` — kept in
+sync on every render — and the callback reads from the ref instead of closing over
+the state value directly.
+
+Reference implementations: `PlayerSessionContext.tsx`, `NavigationContext.tsx`,
+`AudioRuntimeContext.tsx`, `GameRuntimeContext.tsx` (the last uses the ref-mirror
+technique for `submit`, which needs the current `typedWord`/`bestScore`).

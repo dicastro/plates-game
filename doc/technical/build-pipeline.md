@@ -52,6 +52,8 @@ documentation warning — the build fails loudly rather than relying on develope
 |---|---|---|
 | `VITE_TIME_STRATEGY` | `FAST_FORWARD` | `production` |
 | `VITE_SPLASH_FORCED_DELAY_MS` | any value `> 0` | `production` |
+| `ALLOWED_ORIGINS` (Worker, per-env) | CORS allow-list for the frontend origin. |
+| `FRONTEND_BASE_URL` (Worker, per-env) | Where OAuth callback redirects after login — the frontend's own origin, never the Worker's. |
 
 When adding a new dev-only env var, add a matching guard following this same pattern.
 

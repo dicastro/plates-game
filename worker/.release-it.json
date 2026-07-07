@@ -1,0 +1,21 @@
+{
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": "conventionalcommits",
+      "infile": "CHANGELOG.md"
+    }
+  },
+  "git": {
+    "commitMessage": "chore(worker): release worker v${version}",
+    "tagName": "v${version}",
+    "commitsPath": ". ../shared"
+  },
+  "npm": {
+    "publish": false
+  },
+  "hooks": {
+    "before:init": [
+      "npm run typecheck"
+    ]
+  }
+}

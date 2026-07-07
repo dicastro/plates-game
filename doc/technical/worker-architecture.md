@@ -12,7 +12,7 @@ only bundles `src/`, so Worker code never ends up in the frontend's build output
 | Data | Storage | Rationale |
 |---|---|---|
 | Dictionary, daily plate sequence | Bundled static data inside the Worker's own deployed code | Pure in-memory lookup, zero runtime storage cost, updated by redeploying when content changes (see `doc/technical/security-anticheat.md` §3). |
-| Per-player state (attempts, score, streak) | 1 Durable Object per player | Strong consistency per entity — see `doc/technical/security-anticheat.md` §4. |
+| Per-player state (attempts, score, streak) | 1 Durable Object per player, SQLite-backed (`ctx.storage.sql`, real tables `player`/`normal_mode_lang_state`) | Real relational tables — inspectable via Wrangler's Local Explorer, indexable, transactional. Cloudflare's recommended backend for all new DO classes. |
 | Per-room state (Travel/Remote) | 1 Durable Object per room | Same reasoning, enables a future move to native WebSockets for real-time sync. |
 | Leaderboard | D1, one table per `lang` (or a `lang` column with all queries scoped by it) | Durable Objects cannot be queried/sorted as a set; D1 holds a sortable, filterable projection updated by each player's Durable Object on every score change. Never the source of truth — that remains the Durable Object. |
 | Immutable summary of finished rooms (Travel/Remote) | D1 | Once a room finishes, its Durable Object projects an immutable snapshot; the room's Durable Object can then be cleaned up. The finished-rooms lobby reads this projection, never Durable Objects directly — it needs to sort/paginate/filter, same as the leaderboard. |
@@ -26,31 +26,47 @@ sequence) and a new D1 partition/binding, not new Worker code.
 
 ## 4. Authentication
 
-- OAuth Authorization Code flow, implemented directly in the Worker — no third-party auth
-  provider (Firebase or similar).
-- **Full-page redirect only** — no popups, no iframes — for compatibility with constrained
-  embedded browsers (car infotainment, smart TVs) that commonly block both.
-- Only the `openid` scope is requested. No email, name, or photo.
-- On successful callback, the Worker creates/looks up the player's Durable Object (keyed by
-  `authProvider + externalProviderId`) and issues a session: an `httpOnly`/`Secure`/`SameSite`
-  cookie. The client never reads, stores, or transmits this token directly.
-- `AuthProvider` is a Worker-side strategy interface; `GoogleAuthProvider` is the only
-  implementation for now. Adding a provider later means adding a new implementation, not
-  touching the OAuth orchestration code or any game logic.
-- First-login onboarding (alias selection with uniqueness check, interface language,
-  Terms acceptance) happens once, immediately after the first successful callback.
+- OAuth Authorization Code flow, implemented directly in the Worker via a generic
+  `AuthProvider` interface + `authProviderRegistry.ts` — see `AI_CONTEXT.md` decision 19.
+- Routes are provider-agnostic: `GET /auth/:provider/start`, `GET /auth/:provider/callback`.
+- **Full-page redirect only** — no popups, no iframes.
+- Only `openid` scope requested.
+- `id_token` verified via JWKS (`GOOGLE_JWKS_URL`, the `v3` certs endpoint — RS256 via
+  Web Crypto), not the `v1` X.509 certificate endpoint.
+- The OAuth `state` param is a stateless, HMAC-signed token (`stateToken.ts`) carrying
+  a nonce, an issuedAt timestamp, and an optional `intent` (the `AppScreen` the player
+  was trying to reach before being sent to login). On successful callback, the Worker
+  redirects to `${FRONTEND_BASE_URL}/?intent=<intent>` (or `/` if none) — **never** a
+  path relative to the Worker's own origin, since the Worker doesn't serve the SPA.
+- Session cookie: `httpOnly`/`Secure`/`SameSite=Lax`, HMAC-signed, payload
+  `${authProviderId}:${externalProviderId}` — never the internal `playerId` — so the
+  same Durable Object can be re-resolved via `idFromName()` on every request without a
+  lookup table.
+- `PlayerDO.createIfMissing()` assigns the internal `playerId` (UUID) and `country`
+  (from `CF-IPCountry`) once, at first login.
 
 ## 5. Endpoints (Normal Mode)
 
-| Endpoint | Auth required | Reads | Writes | Returns |
-|---|---|---|---|---|
-| `POST /normal/enter` | Yes | Player's Durable Object (read-only) | None | Today's puzzle (consonants, digits, bonus) + the player's current `attemptsUsedToday`/`bestScoreToday`/`normalModeScore`/`currentStreakDays` |
-| `POST /normal/attempt` | Yes | Player's Durable Object | Player's Durable Object; D1 leaderboard row if `normalModeScore` changes | Per-attempt result (valid/invalid, score, updated counters) |
+| Endpoint | Auth required | Notes |
+|---|---|---|
+| `GET /auth/:provider/start` | No | Redirects to the provider's authorization URL. |
+| `GET /auth/:provider/callback` | No | Exchanges code, creates/loads the player, sets the session cookie, redirects to the frontend. |
+| `POST /auth/logout` | No | Clears the session cookie. |
+| `GET /player/session?lang=<lang>` | Yes | Returns `PlayerProfile` for that lang. |
+| `POST /normal/enter` | Yes | Body: `{ lang }`. Returns `NormalModeStatus`. |
+| `POST /normal/attempt` | Yes | Body: `{ lang, word }`. Returns `AttemptResult`. |
+| `POST /player/prefs` | Yes | Body: `{ lang, hasSeenRulesIntro: true }`. |
 
-No separate "player status" endpoint is needed beyond `enter` — entering Normal Mode always
-resolves the authoritative state in the same call that resolves today's puzzle.
+All authenticated routes are wrapped by `withSession()` (`routes/withSession.ts`), a
+higher-order function — not a class hierarchy, since Worker route handlers are plain
+functions, not stateful objects — that resolves and validates the session cookie once,
+before the handler runs.
 
-## 6. Leaderboard Read Endpoints
+## 6. Leaderboard Read Endpoints — Not Yet Implemented
+
+D1 schema and write path (§2, `player_period_stats`) are in place; the read endpoints
+(`GET /leaderboard/:lang`, optionally `?country=XX`, behind a Cache API layer with a
+TTL to next UTC midnight) are designed but not implemented — see `doc/NEXT_STEPS.md`.
 
 | Endpoint | Scope |
 |---|---|
@@ -116,3 +132,13 @@ mode (`development`, `cf-staging`, `production` — see `doc/technical/build-pip
 `npm run dev:cf:stg` runs the frontend locally against the real `staging` Worker — useful for
 exercising Durable Objects/D1/OAuth, which `MemoryPlatform` cannot simulate, without ever
 touching `production` data.
+
+## 11. CORS
+
+Every fetch-based endpoint (all except the OAuth start/callback, which are full-page
+navigations, unaffected by CORS) requires explicit CORS headers, since the frontend
+(`localhost:5173` in dev, a separate Cloudflare Pages domain in staging/production) is
+a different origin from the Worker. `Access-Control-Allow-Origin` reflects the request's
+`Origin` header only if it matches the `ALLOWED_ORIGINS` allow-list (comma-separated,
+per environment) — never `"*"`, since credentialed requests (`credentials: "include"`)
+require an explicit origin. See `worker/src/cors.ts`.

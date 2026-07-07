@@ -28,8 +28,7 @@ export class MemoryPlatform implements PlatformService {
   private player: PlayerProfile = {
     alias: "DevPlayer",
     country: "ES",
-    normalModeScore: 0,
-    currentStreakDays: 0,
+    dailyStreak: 0,
     hasSeenRulesIntro: false,
     adsEnabled: false,
   };
@@ -40,7 +39,7 @@ export class MemoryPlatform implements PlatformService {
   private pauseCallbacks: Array<() => void> = [];
   private resumeCallbacks: Array<() => void> = [];
 
-  async initialize(): Promise<PlayerProfile | null> {
+  async initialize(_lang: string): Promise<PlayerProfile | null> {
     // Local dev always "logged in" as the mock player — no real OAuth round-trip to simulate.
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) this.pauseCallbacks.forEach((cb) => cb());
@@ -49,8 +48,8 @@ export class MemoryPlatform implements PlatformService {
     return this.player;
   }
 
-  async login(_provider: AuthProviderId): Promise<void> {
-    // No-op — MemoryPlatform has no real session to establish.
+  async login(_provider: AuthProviderId, _intent?: string): Promise<void> {
+    // No-op — MemoryPlatform has no real session to establish
   }
 
   async logout(): Promise<void> {
@@ -70,7 +69,7 @@ export class MemoryPlatform implements PlatformService {
 
   async submitAttempt(_lang: string, word: string): Promise<AttemptResult> {
     await simulatedNetworkDelay();
-    
+
     this.attemptsUsedToday += 1;
     const valid = MOCK_DICTIONARY.includes(word.toUpperCase());
     const scoreThisAttempt = valid
@@ -89,7 +88,7 @@ export class MemoryPlatform implements PlatformService {
     };
   }
 
-  async markRulesIntroSeen(): Promise<void> {
+  async markRulesIntroSeen(_lang: string): Promise<void> {
     this.player = { ...this.player, hasSeenRulesIntro: true };
   }
 

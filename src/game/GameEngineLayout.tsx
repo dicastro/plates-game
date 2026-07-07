@@ -83,7 +83,7 @@ export default function GameEngineLayout({ config }: { config: GameConfig }) {
 
   async function handleRulesClosed(dontShowAgain: boolean) {
     if (dontShowAgain && player) {
-      await platformService.markRulesIntroSeen();
+      await platformService.markRulesIntroSeen(config.lang);
       updatePlayer({ ...player, hasSeenRulesIntro: true });
     }
   }

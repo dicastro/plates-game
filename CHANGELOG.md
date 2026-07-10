@@ -1,5 +1,14 @@
 
 
+## [0.9.0](///compare/front-v0.8.0...front-v0.9.0) (2026-07-10)
+
+
+### Features
+
+* **front:** add alias setup and leaderboard screens c4bd15d
+* **shared:** add typed API route contract, alias/leaderboard types, ISO-week helpers 2ae8c3f
+* **shared:** add typed API route contract, alias/leaderboard types, ISO-week helpers 7916163
+
 ## 0.8.0 (2026-07-07)
 
 

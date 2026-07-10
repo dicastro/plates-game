@@ -1,6 +1,6 @@
-import type { TimeService } from "./TimeService";
-import { RealClockTimeService } from "./strategies/RealClockTimeService";
-import { FastForwardTimeService } from "./strategies/FastForwardTimeService";
+import type { TimeService } from "../../shared/time/TimeService";
+import { RealClockTimeService } from "../../shared/time/strategies/RealClockTimeService";
+import { FastForwardTimeService } from "../../shared/time/strategies/FastForwardTimeService";
 
 export class TimeServiceFactory {
   static create(): TimeService {

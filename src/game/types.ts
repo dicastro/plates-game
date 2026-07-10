@@ -6,6 +6,7 @@ export type GameMode = "NORMAL" | "TRAVEL" | "REMOTE";
 export interface GameConfig {
   mode: GameMode;
   lang: string;
+  daySeed: string;
   attemptsLimit: number;
   countdownSeconds: number | null;
   consonants: string[];

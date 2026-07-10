@@ -15,7 +15,7 @@ export function useNextUtcResetCountdown(): string {
 
   useEffect(() => {
     const tick = () => {
-      const now = timeService.getCosmeticDate();
+      const now = new Date(timeService.now());
       const next = new Date(now);
       next.setUTCHours(24, 0, 0, 0);
       setDisplay(formatRemaining(next.getTime() - now.getTime()));

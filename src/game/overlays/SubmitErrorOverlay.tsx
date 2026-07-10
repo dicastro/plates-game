@@ -1,6 +1,6 @@
 import { useTranslation } from "../../i18n/useTranslation";
 import { WarningIcon } from "../../components/icons";
-import OverlayCard from "./OverlayCard";
+import OverlayCard from "../../components/OverlayCard";
 
 export default function SubmitErrorOverlay({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();

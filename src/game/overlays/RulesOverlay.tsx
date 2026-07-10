@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "../../i18n/useTranslation";
-import OverlayCard from "./OverlayCard";
+import OverlayCard from "../../components/OverlayCard";
 
 interface RulesOverlayProps {
   attemptsLimit: number;

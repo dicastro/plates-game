@@ -1,4 +1,4 @@
-import type { TimeService } from "../time/TimeService";
+import type { TimeService } from "../../shared/time/TimeService";
 import type { ResolvedThemeContext } from "./types";
 import { cantabriaGreenTheme } from "./themes/cantabriaGreen";
 
@@ -8,7 +8,7 @@ export class ThemeScheduler {
   resolve(): ResolvedThemeContext {
     // Cosmetic date read here for future season/badge conditions.
     // Currently unused — only one theme exists and no badges are implemented yet.
-    void this.timeService.getCosmeticDate();
+    void this.timeService.now();
 
     return {
       theme: cantabriaGreenTheme,

@@ -1,6 +1,6 @@
 // src/game/overlays/AttemptsDetailOverlay.tsx
 import { useTranslation } from "../../i18n/useTranslation";
-import OverlayCard from "./OverlayCard";
+import OverlayCard from "../../components/OverlayCard";
 import ScrollableWord from "../../components/ScrollableWord";
 import type { AttemptRecord } from "../../platform/PlatformService";
 

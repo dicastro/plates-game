@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { CloseIcon } from "../../components/icons";
+import { useEffect, ReactNode } from "react";
+import { CloseIcon } from "./icons";
 
 interface OverlayCardProps {
   children: ReactNode;
@@ -8,6 +8,15 @@ interface OverlayCardProps {
 }
 
 export default function OverlayCard({ children, onClose, accent = false }: OverlayCardProps) {
+  useEffect(() => {
+    if (!onClose) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose!();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+  
   return (
     <div className="absolute inset-0 bg-black/60 flex items-center justify-center p-2">
       <div

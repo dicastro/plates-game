@@ -1,6 +1,7 @@
 export type AppScreen =
   | "SPLASH"
   | "LOGIN"
+  | "ALIAS_SETUP"
   | "HOME"
   | "NORMAL_GAME"
   | "NORMAL_RESULT"

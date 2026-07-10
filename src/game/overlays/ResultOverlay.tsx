@@ -1,6 +1,6 @@
 import { useTranslation } from "../../i18n/useTranslation";
 import { ShareIcon, TrophyIcon, CheckCircleIcon, SearchIcon } from "../../components/icons";
-import OverlayCard from "./OverlayCard";
+import OverlayCard from "../../components/OverlayCard";
 import ScrollableWord from "../../components/ScrollableWord";
 import type { AttemptRecord } from "../../platform/PlatformService";
 

@@ -28,3 +28,15 @@
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+
+@keyframes leaderboard-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+.leaderboard-skeleton {
+  background: linear-gradient(90deg, var(--color-surface) 25%, var(--color-surface2) 50%, var(--color-surface) 75%);
+  background-size: 200% 100%;
+  animation: leaderboard-shimmer 1.4s ease-in-out infinite;
+}
+
+.fluid-text-area {
+  container-type: inline-size;
+}

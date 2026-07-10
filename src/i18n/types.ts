@@ -67,4 +67,59 @@ export interface TranslationSchema {
       google: string;
     }
   }
+  alias: {
+    title: string;
+    subtitle: string;
+    placeholder: string;
+    helperRules: string; // {{min}}, {{max}}
+    checking: string;
+    available: string;
+    taken: string;
+    takenServerBanner: string;
+    confirmButton: string;
+    successTitle: string; // {{alias}}
+    successBody: string;
+    continueButton: string;
+  };
+  leaderboard: {
+    tabWeek: string;
+    tabMonth: string;
+    tabYear: string;
+    tabTotal: string;
+    helpAriaLabel: string;
+    helpTitle: string;
+    helpBodyWeek: string;
+    helpBodyMonth: string;
+    helpBodyYear: string;
+    helpBodyTotal: string;
+    intervalWeek: string;  // {{start}}, {{end}}
+    intervalMonth: string; // {{month}}, {{year}}
+    intervalYear: string;  // {{year}}
+    intervalTotal: string; // {{date}}
+    yourScoreWeek: string;  // {{score}}
+    yourScoreMonth: string; // {{score}}
+    yourScoreYear: string;  // {{score}}
+    allCountries: string;
+    emptyNoPlayersTitle: string;
+    emptyNoPlayersBody: string;
+    notPlayedYetBody: string;
+    ctaPlayNow: string;
+    loading: string;
+    rankAriaCountry: string; // {{country}}
+    exitAriaLabel: string;
+    monthSelectorLabel: string;
+    yearSelectorLabel: string;
+    yourScoreNotYetIncluded: string; // {{score}} — Total tab: current week, not yet folded in
+    prevAriaLabel: string;
+    nextAriaLabel: string;
+    latestAriaLabel: string;
+    accumHelpAriaLabel: string;
+    accumHelpTitle: string;
+    accumHelpBodyWeek: string;
+    accumHelpBodyMonth: string;
+    accumHelpBodyYear: string;
+    accumHelpBodyTotal: string;
+    totalPlayers: string;   // {{count}}, {{total}}
+    allCountriesWithCount: string; // {{count}}
+  };
 }

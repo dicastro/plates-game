@@ -7,6 +7,7 @@ import { usePlayerSession } from "../player/PlayerSessionContext";
 import ScreenContainer from "../components/ScreenContainer";
 import PlatesLogo from "../components/PlatesLogo";
 import Button from "../components/Button";
+import { needsAliasSetup } from "../player/aliasGate";
 
 export default function HomeScreen() {
   const { navigate, navigateToLogin } = useNavigation();
@@ -15,8 +16,10 @@ export default function HomeScreen() {
   const { initialize } = usePlayerSession();
 
   useEffect(() => {
-    initialize(); // no-op if already loaded — enriches the screen when it is resolved
-  }, [initialize]);
+    initialize().then((profile) => {
+      if (needsAliasSetup(profile)) navigate("ALIAS_SETUP");
+    });
+  }, [initialize, navigate]);
 
   async function playNow() {
     ensurePlayback();

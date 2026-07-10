@@ -13,6 +13,7 @@ function buildConfig(status: NormalModeStatus, onExit: () => void): GameConfig {
   return {
     mode: "NORMAL",
     lang: DICT_TARGET_LANG,
+    daySeed: status.daySeed,
     attemptsLimit: NORMAL_MODE_DAILY_ATTEMPTS_LIMIT,
     countdownSeconds: null,
     consonants: status.puzzle.consonants,

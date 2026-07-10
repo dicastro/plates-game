@@ -1,5 +1,5 @@
 import { useTranslation } from "../../i18n/useTranslation";
-import OverlayCard from "./OverlayCard";
+import OverlayCard from "../../components/OverlayCard";
 
 export default function BonusInfoOverlay({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();

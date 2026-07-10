@@ -1,9 +1,7 @@
 import { timeService } from "./time/timeServiceInstance";
-import { FastForwardTimeService } from "./time/strategies/FastForwardTimeService";
+import { type AdvanceUnit } from "../shared/time/strategies/FastForwardTimeService";
+import { isFastForwardTimeService } from "../shared/time/timeServiceInstance";
 
-function isFastForward(service: unknown): service is FastForwardTimeService {
-  return service instanceof FastForwardTimeService;
-}
 
 /** Single entry point for all dev-only window hooks. Called once at startup. */
 export function installDevtools(): void {
@@ -12,8 +10,8 @@ export function installDevtools(): void {
   const w = window as unknown as Record<string, unknown>;
   const service = timeService;
 
-  if (isFastForward(service)) {
-    w["__SIMULATE_DATE_OFFSET__"] = (days: number) => service.setOffsetDays(days);
+  if (isFastForwardTimeService(service)) {
+    w["__ADVANCE_TIME_BY__"] = (unit: AdvanceUnit) => service.advanceBy(unit);
   }
 
   // Add further dev hooks here as needed — one `if` block per capability,

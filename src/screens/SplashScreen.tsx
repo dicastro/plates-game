@@ -4,6 +4,7 @@ import { usePlayerSession } from "../player/PlayerSessionContext";
 import SplashAnimation from "../components/SplashAnimation";
 import ScreenContainer from "../components/ScreenContainer";
 import type { AppScreen } from "../navigation/types";
+import { needsAliasSetup } from "../player/aliasGate";
 
 const FORCED_DELAY_MS = Number(import.meta.env.VITE_SPLASH_FORCED_DELAY_MS ?? 0);
 const POST_LOGIN_INTENTS: AppScreen[] = ["NORMAL_GAME"]; // TODO include rest of screens that needs login
@@ -36,7 +37,11 @@ export default function SplashScreen() {
         // directly where player intended to go
         const profile = await initialize();
         window.history.replaceState(null, "", window.location.pathname);
-        navigate(profile ? intent : "HOME");
+        if (!profile) {
+          navigate("HOME");
+          return;
+        }
+        navigate(needsAliasSetup(profile) ? "ALIAS_SETUP" : intent);
         return;
       }
 

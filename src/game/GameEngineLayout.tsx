@@ -3,12 +3,12 @@ import { useTranslation } from "../i18n/useTranslation";
 import { usePlayerSession } from "../player/PlayerSessionContext";
 import { platformService } from "../platform/platformServiceInstance";
 import { useGameRuntime } from "./GameRuntimeContext";
-import { getKeyboardLayout } from "./keyboardLayouts";
+import { getKeyboardLayout } from "../components/keyboardLayouts";
 import { ExitIcon, HelpIcon } from "../components/icons";
 import type { GameConfig } from "./types";
 import PlateHeader from "./PlateHeader";
 import InputRow from "./InputRow";
-import VirtualKeyboard from "./VirtualKeyboard";
+import VirtualKeyboard from "../components/VirtualKeyboard";
 import CollapsedFooter from "./CollapsedFooter";
 import OverlayHost from "./overlays/OverlayHost";
 
@@ -46,7 +46,6 @@ export default function GameEngineLayout({ config }: { config: GameConfig }) {
 
     function handleKeyDown(e: KeyboardEvent) {
       if (activeOverlay) {
-        if (e.key === "Escape") closeOverlay();
         return;
       }
       if (!isKeyboardExpanded) return;

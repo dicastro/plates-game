@@ -5,6 +5,8 @@ import SplashScreen from "./screens/SplashScreen";
 import LoginScreen from "./screens/LoginScreen";
 import HomeScreen from "./screens/HomeScreen";
 import NormalGameScreen from "./screens/NormalGameScreen";
+import AliasSetupScreen from "./screens/AliasSetupScreen"
+import LeaderboardScreen from "./screens/LeaderboardScreen";
 
 function AppShell() {
   const { state } = useNavigation();
@@ -15,10 +17,14 @@ function AppShell() {
         return <SplashScreen />;
       case "LOGIN":
         return <LoginScreen />;
+      case "ALIAS_SETUP":
+        return <AliasSetupScreen />;
       case "HOME":
         return <HomeScreen />;
       case "NORMAL_GAME":
         return <NormalGameScreen />;
+      case "LEADERBOARD":
+        return <LeaderboardScreen />;
       default:
         return <HomeScreen />;
     }

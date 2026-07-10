@@ -6,35 +6,60 @@ import { handleAuthStart, handleAuthCallback, handleLogout, handlePlayerSession 
 import { handleNormalEnter } from "./routes/normalEnter";
 import { handleNormalAttempt } from "./routes/normalAttempt";
 import { handlePlayerPrefs } from "./routes/playerPrefs";
+import { handleAliasCheck, handleAliasSetup } from "./routes/aliasRoutes";
+import { handleLeaderboard, handleLeaderboardAvailable } from "./routes/leaderboardRoutes";
+import { API_ROUTES, type AnyRouteDefinition } from "../../shared/apiRoutes";
+import { ADVANCE_TIME_PATTERN, handleAdvanceTime } from "./dev/advanceTimeRoutes";
+import type { AdvanceUnit } from "../../shared/time/strategies/FastForwardTimeService";
 
-const LOGOUT = /^\/auth\/logout$/;
-const AUTH_START = /^\/auth\/([a-z]+)\/start$/;
-const AUTH_CALLBACK = /^\/auth\/([a-z]+)\/callback$/;
+type Handler = (request: Request, env: Env, context: any) => Promise<Response>;
 
-type RouteEntry = { method: string; path: string; handler: (request: Request, env: Env) => Promise<Response> };
-
-const ROUTES: RouteEntry[] = [
-  { method: "GET", path: "/player/session", handler: handlePlayerSession },
-  { method: "POST", path: "/normal/enter", handler: handleNormalEnter },
-  { method: "POST", path: "/normal/attempt", handler: handleNormalAttempt },
-  { method: "POST", path: "/player/prefs", handler: handlePlayerPrefs },
-];
+const HANDLERS: Record<keyof typeof API_ROUTES, Handler> = {
+  playerSession: handlePlayerSession,
+  normalEnter: handleNormalEnter,
+  normalAttempt: handleNormalAttempt,
+  playerPrefs: handlePlayerPrefs,
+  authLogout: (_request, env) => handleLogout(env),
+  authStart: handleAuthStart,
+  authCallback: handleAuthCallback,
+  aliasCheck: handleAliasCheck,
+  aliasSetup: handleAliasSetup,
+  leaderboardAvailable: handleLeaderboardAvailable,
+  leaderboard: handleLeaderboard,
+};
 
 async function route(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
 
-  const logoutMatch = url.pathname.match(LOGOUT);
-  if (logoutMatch && request.method === "POST") return handleLogout(env);
+  if (env.ENVIRONMENT_NAME !== "production") {
+    const advanceMatch = url.pathname.match(ADVANCE_TIME_PATTERN);
 
-  const startMatch = url.pathname.match(AUTH_START);
-  if (startMatch && request.method === "GET") return handleAuthStart(request, env, startMatch[1]);
+    if (advanceMatch && request.method === "POST") {
+      return handleAdvanceTime(env, advanceMatch[1] as AdvanceUnit);
+    }
+  }
 
-  const callbackMatch = url.pathname.match(AUTH_CALLBACK);
-  if (callbackMatch && request.method === "GET") return handleAuthCallback(request, env, callbackMatch[1]);
+  for (const [key, defRaw] of Object.entries(API_ROUTES)) {
+    // The only cast in this whole design: iterating a Record whose values
+    // have different PathParams/Query generics forces TS to erase them here
+    // — there is no way to keep per-route types AND loop over a heterogeneous
+    // collection at the same time. Everywhere else (handlers, build() calls)
+    // stays fully typed.
+    const def = defRaw as AnyRouteDefinition;
+    if (def.method !== request.method) continue;
+    
+    const pathParams = def.matchPath(url.pathname);
+    if (pathParams === null) continue; // path doesn't belong to this route — keep looking
 
-  const entry = ROUTES.find((r) => r.method === request.method && r.path === url.pathname);
-  if (!entry) return new Response("Not found", { status: 404 });
-  return entry.handler(request, env);
+    const parsed = def.parseQuery(url.searchParams, pathParams);
+    if (!parsed.ok) {
+      return new Response(`Bad request — missing query parameters: ${parsed.missingParams.join(", ")}.`, { status: 400 });
+    }
+
+    return HANDLERS[key as keyof typeof API_ROUTES](request, env, parsed.value);
+  }
+
+  return new Response("Not found", { status: 404 });
 }
 
 export default {

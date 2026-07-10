@@ -3,6 +3,7 @@ import type { PlayerDO } from "./durable-objects/PlayerDO";
 export type SessionCookieSameSite = "Strict" | "Lax" | "None";
 
 export interface Env {
+  ENVIRONMENT_NAME: "development" | "staging" | "production";
   PLAYER_DO: DurableObjectNamespace<PlayerDO>;
   DB: D1Database;
   GOOGLE_CLIENT_ID: string;

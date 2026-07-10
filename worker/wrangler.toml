@@ -15,6 +15,7 @@ class_name = "PlayerDO"
 
 [env.development]
 [env.development.vars]
+ENVIRONMENT_NAME = "development"
 GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/auth"
 GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
 GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
@@ -22,7 +23,7 @@ GOOGLE_ISSUER = "https://accounts.google.com"
 OAUTH_REDIRECT_BASE_URL = "http://localhost:8787"
 ALLOWED_ORIGINS = "http://localhost:5173"
 FRONTEND_BASE_URL = "http://localhost:5173"
-SESSION_COOKIE_SAME_SITE = "Lax"
+SESSION_COOKIE_SAME_SITE = "None"
 
 [[env.development.durable_objects.bindings]]
 name = "PLAYER_DO"
@@ -35,6 +36,7 @@ database_id = "0accb7aa-1393-4166-92ca-cb340658addc"
 
 [env.staging]
 [env.staging.vars]
+ENVIRONMENT_NAME = "staging"
 GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/auth"
 GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
 GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
@@ -55,6 +57,7 @@ database_id = "0accb7aa-1393-4166-92ca-cb340658addc"
 
 [env.production]
 [env.production.vars]
+ENVIRONMENT_NAME = "production"
 GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/auth"
 GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
 GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"

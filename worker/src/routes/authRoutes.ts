@@ -4,31 +4,28 @@ import { createSessionCookie, clearSessionCookie } from "../auth/session";
 import { withSession } from "./withSession";
 import { resolvePlayerStub } from "./resolvePlayerStub";
 import { isSupportedAuthProviderId, resolveAuthProvider } from "../auth/authProviderRegistry";
+import type { AuthStartContext, AuthCallbackContext, PlayerSessionContext } from "../../../shared/apiRoutes";
 
-export async function handleAuthStart(request: Request, env: Env, providerId: string): Promise<Response> {
-  if (!isSupportedAuthProviderId(providerId)) return new Response("Unknown auth provider.", { status: 404 });
+export async function handleAuthStart(_request: Request, env: Env, context: AuthStartContext): Promise<Response> {
+  if (!isSupportedAuthProviderId(context.provider)) return new Response("Unknown auth provider.", { status: 404 });
+  const providerId = context.provider;
   const provider = resolveAuthProvider(providerId);
   if (!provider) return new Response("Unknown auth provider.", { status: 404 });
 
-  const intent = new URL(request.url).searchParams.get("intent") ?? "";
-  const state = await createStateToken(env.SESSION_SIGNING_SECRET, intent);
+  const state = await createStateToken(env.SESSION_SIGNING_SECRET, context.intent ?? "");
   return Response.redirect(provider.buildAuthorizationUrl(env, state), 302);
 }
 
-export async function handleAuthCallback(request: Request, env: Env, providerId: string): Promise<Response> {
-  if (!isSupportedAuthProviderId(providerId)) return new Response("Unknown auth provider.", { status: 404 });
+export async function handleAuthCallback(request: Request, env: Env, context: AuthCallbackContext): Promise<Response> {
+  if (!isSupportedAuthProviderId(context.provider)) return new Response("Unknown auth provider.", { status: 404 });
+  const providerId = context.provider;
   const provider = resolveAuthProvider(providerId);
   if (!provider) return new Response("Unknown auth provider.", { status: 404 });
 
-  const url = new URL(request.url);
-  const code = url.searchParams.get("code");
-  const state = url.searchParams.get("state");
-  if (!code || !state) return new Response("Missing code or state.", { status: 400 });
-
-  const verifiedState = await verifyStateToken(env.SESSION_SIGNING_SECRET, state);
+  const verifiedState = await verifyStateToken(env.SESSION_SIGNING_SECRET, context.state);
   if (!verifiedState) return new Response("Invalid or expired state.", { status: 400 });
 
-  const { externalProviderId } = await provider.handleCallback(env, code);
+  const { externalProviderId } = await provider.handleCallback(env, context.code);
   const doId = env.PLAYER_DO.idFromName(`${providerId}:${externalProviderId}`);
   const stub = env.PLAYER_DO.get(doId);
   const country = request.headers.get("CF-IPCountry") ?? "XX";
@@ -44,11 +41,7 @@ export async function handleLogout(env: Env): Promise<Response> {
 }
 
 // See point 4 below re: why /player/session now requires `lang`.
-export const handlePlayerSession = withSession(async (request, env, session) => {
-  const url = new URL(request.url);
-  const lang = url.searchParams.get("lang");
-  if (!lang) return new Response("Missing lang.", { status: 400 });
-
+export const handlePlayerSession = withSession<PlayerSessionContext>(async (_request, env, session, context) => {
   const stub = resolvePlayerStub(env, session);
-  return Response.json(await stub.getPlayerProfileForLang(lang));
+  return Response.json(await stub.getPlayerProfileForLang(context.lang));
 });

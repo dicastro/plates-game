@@ -57,8 +57,7 @@ npm run build
 While running the development environment, you can emulate backend/lifecycle behavior from
 the browser console (F12):
 
-* `__SIMULATE_DATE_OFFSET__(days)`: shifts the cosmetic date used by the Theme system
-  forward, for testing seasonal themes/badges without waiting for the real calendar date.
+* `__ADVANCE_TIME_BY__(unit)`: shifts the date used by the system, for testing seasonal themes/badges without waiting for the real calendar date. Possible units are: day, week, month, year
 
 ---
 

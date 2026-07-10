@@ -30,3 +30,18 @@ exercising the real app flow (log in, play a round).
 
 Delete the `.wrangler/state` directory (holds every local binding: KV, D1,
 DO, R2). Recreated automatically on the next `wrangler dev`.
+
+## 5. Advancing Time (Leaderboard Period Closures)
+
+`worker/src/time/` mirrors the client's `TimeService` Strategy pattern —
+`RealClockTimeService` (production) / `FastForwardTimeService` (dev/staging,
+holds an in-memory offset). `resolveWorkerTimeService(env)` resolves the
+correct one per environment (`env.ENVIRONMENT_NAME`).
+
+`POST /dev/advance-time/:unit` (`unit` = `day`/`week`/`month`/`year`, no body,
+no session) advances the Worker's **global** clock offset — not any specific
+player. Nothing about any `PlayerDO` is touched by this call; each player's
+own rollover still only happens lazily, the next time that player makes a
+request — exactly like real time passing. Returns
+`{ fromDaySeed, toDaySeed }`. Disabled outright (403) when
+`ENVIRONMENT_NAME === "production"`.

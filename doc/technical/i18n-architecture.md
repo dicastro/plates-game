@@ -75,8 +75,9 @@ src/i18n/updates/
 
 ## 4. Language Source
 
-Interface language is chosen explicitly by the player during first-login onboarding (see
-`doc/technical/worker-architecture.md` §4), defaulting to `navigator.language` only as a
-preselected suggestion, never as a silent decision. The chosen value is stored on the
-player's profile and travels with their account across devices — `useTranslation`'s
-`detectLocale()` is only the fallback used before the player's profile has loaded.
+Interface language is tied to the dictionary/plate language (`VITE_DICT_TARGET`),
+not chosen independently by the player — each language deployment has its own
+domain and its own fixed interface language. `useTranslation()`'s
+`detectLocale()` (via `navigator.language`) exists as a fallback only for
+missing translation keys, not as a player-facing language picker; there is no
+onboarding language-selection step.

@@ -46,6 +46,9 @@ All numerical constants shared between the client and the Worker live in
 | `MIN_PLAYABLE_HEIGHT_PX` | `480` | Minimum viewport height (px) required to render the game. Below this the viewport gate triggers. Lives in `shared/gameConfig.ts`. |
 | `MAX_STORAGE_TRIPS_HISTORIC` | `30` | Max historical sessions stored per user |
 | `DICTIONARY_FALLBACK_LANG` | `"en"` | Fallback locale for missing translation keys |
+| `ALIAS_MIN_LENGTH` | `3` | Minimum alias length. Lives in `shared/gameConfig.ts`. |
+| `ALIAS_MAX_LENGTH` | `20` | Maximum alias length. Lives in `shared/gameConfig.ts`. |
+| `LEADERBOARD_TOP_N` | `100` | Max entries returned per leaderboard request before falling back to the own-entry mechanism. Lives in `shared/gameConfig.ts`. |
 
 ### 1.2 Plate Scoring
 | Constant | Value | Description |

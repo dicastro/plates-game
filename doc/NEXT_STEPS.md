@@ -51,21 +51,63 @@ Backlog of deferred items. Not detailed specs — each entry points to where the
   the originating frontend origin through the OAuth `state` token itself, the same way
   `intent` already travels through it. See `doc/technical/worker-architecture.md` §4.
 
-- **Special characters per language (accents, diaeresis, etc.).** The virtual keyboard
-  (`VirtualKeyboard.tsx`/`keyboardLayouts.ts`) currently has no way to type accented
-  vowels or a diaeresis — Spanish dictionary words containing them (e.g. "canción",
-  "pingüino") cannot be entered or matched at all. At minimum, diaeresis should not be
-  dropped from the dictionary (it changes pronunciation/meaning); plain accents could
-  arguably be normalized away if a simpler approach is preferred, but this is a product
-  decision, not a technical constraint. Needs: (1) decide whether the dictionary itself
-  stores accented forms or a normalized/stripped variant, (2) if accented forms are
-  kept, extend `keyboardLayouts.ts` per language with the extra characters (likely as a
-  secondary keyboard row/mode, given screen space), (3) confirm `isStructurallyValid`
-  (`shared/wordValidation.ts`) behaves correctly with accented input (JS `toUpperCase()`
-  already uppercases accented characters correctly, so no code change expected there,
-  but needs actual verification against real accented dictionary words). Each future
-  language will have its own set of special characters to account for (this is not
-  Spanish-specific plumbing).
+- **Hardcoded styles outside the theming system — requires a dedicated session.**
+  Several new screens (`AliasSetupScreen`, `LeaderboardScreen`) have accumulated
+  Tailwind classes with arbitrary colors/sizes (`bg-[rgba(192,57,43,0.18)]`,
+  `text-[#e87070]`, ad-hoc font sizes) instead of exclusively using the
+  `ThemeProvider`/`--color-*` contract (see `doc/technical/theming-architecture.md`)
+  and the centralized typography tokens in `tailwind.config.js` (`text-overlay-title`,
+  `text-panel-label`, etc. — added in this session). This breaks the goal of being able
+  to switch visual templates with a single configuration variable: any color/size written
+  directly into a component will not react to a theme change. **Scope of the dedicated session:**
+  (1) audit `src/screens/` and `src/game/` for color literals (`#`, `rgba(`, default
+  Tailwind color names like `bg-black/60`) and replace them with existing or new `--color-*`
+  variables if any are missing (e.g., there is currently no semantic equivalent for a
+  "soft error background" — the `rgba(192,57,43,0.18)` used in several banners should be
+  a theme variable, e.g., `--color-danger-soft-bg`); (2) retrofit `OverlayCard`, `ResultOverlay`,
+  `RulesOverlay`, and `BestScorePanel` (already visually validated) to use the new typography
+  tokens instead of their inline `clamp()` — same visual value, no design changes, just
+  centralization; (3) ensure that no new components repeat this in the future — possibly
+  via a lint rule or a checklist in `AGENT.md`.
+
+- **No shared response-shape contract between Worker and client.** `shared/apiRoutes.ts`
+  already centralizes routes and query-param shapes (`ParseResult<T>`, `QueryCodec`), but
+  the *response bodies* each endpoint returns are only implicitly shared via
+  `shared/types.ts` interfaces (`PlayerProfile`, `LeaderboardResult`, `AttemptResult`,
+  etc.) — nothing enforces that a given Worker handler's `Response.json(...)` payload
+  actually conforms to the interface the client expects to parse. A field renamed,
+  removed, or retyped on one side compiles fine on both sides independently and only
+  surfaces at runtime (or not at all, if the client just reads `undefined` silently).
+  **Scope of the fix:** extend the `RouteDefinition`/`API_ROUTES` mechanism
+  (`shared/apiRoutes.ts`) with an explicit `ResponseBody` generic per route — e.g.
+  `RouteDefinition<PathParams, Query, ResponseBody>` — so each Worker handler's return
+  type and each client-side `parseJsonOrThrow<T>()` call both derive `T` from the same
+  route definition (`RouteResponse<typeof API_ROUTES.leaderboard>`, mirroring the
+  existing `RouteContext<...>` pattern), instead of independently importing a
+  `shared/types.ts` interface that nothing forces them to actually match at the call
+  site. Candidate for the same dedicated session as the theming/styles cleanup item
+  above, since both are "tighten an existing shared contract" work rather than new
+  features.
+
+- **Accented-letter input via long-press popover (game mode word entry only).**
+  Interaction model decided: long-press (not simple tap, to avoid slowing down
+  regular typing since accents are a residual use case) on a key with variants
+  opens a popover in a **fixed position** (not anchored per-key — avoids all
+  edge-of-keyboard positioning math). The popover stays open until a second tap
+  either (a) selects an option — commits that character and closes, or (b) lands
+  outside the popover — closes without committing anything. No drag/slide
+  gesture — this is what makes it equally simple on touch and mouse/desktop.
+  Data model: extend `KeyboardLayout` (`keyboardLayouts.ts`) with
+  `variants?: Record<string, string[]>` per language (e.g. es: A→Á, E→É, I→Í,
+  O→Ó, U→Ú/Ü). `VirtualKeyboard` needs a capabilities prop
+  (`{ allowSymbols, allowAccents }`) so each screen opts in independently —
+  game mode: accents on, symbols off; **explicitly out of scope for the Alias
+  Setup screen**, which only needs letters + digits (see
+  `doc/functional/mockups/alias-setup-mockups.html`). Digits stay on a
+  mode-toggle key (`Aa ⇄ 123`), never folded into the popover mechanism —
+  digits are a primary character class, not a rare alternate, so mixing the
+  two interaction patterns would be inconsistent with what players already
+  expect from OS keyboards.
 
 - **Multi-device attempt history goes stale mid-session.** `AttemptResult`
   (`shared/types.ts`) does not include the full `attemptsHistory` — only the new
@@ -87,3 +129,36 @@ Backlog of deferred items. Not detailed specs — each entry points to where the
   authoritative full list on every attempt, (2) have the reducer replace instead of
   append, (3) differentiate error types in `submit()`'s catch to show the correct
   overlay/message.se
+
+- **`GameRuntimeContext`'s `SUBMIT_SUCCESS` reducer still locally constructs and
+  appends the attempt record instead of replacing `attemptsHistory` from the
+  Worker's response.** `AttemptResult.attemptsHistory` was added and the Worker/
+  `MemoryPlatform` both now populate it correctly, but the client-side reducer
+  was never updated to consume it — it still builds `record` from `state.typedWord`
+  and does `[...state.attemptsHistory, record]`. This means the original
+  multi-device staleness bug (see the fuller description already in this file)
+  is only half-fixed: the data is now available, but not yet used. Also still
+  open: differentiating a legitimate 400 (limit reached / structurally invalid)
+  from a real network failure in `submit()`'s `catch` block.
+
+- **Full country list per leaderboard view.** The country filter currently offers
+  only "All countries" or the player's own country — a real per-view distinct
+  country list was designed against (and would be answerable via
+  `available_periods`, grain-bounded by country count) but the client-side combo
+  and a corresponding client method were never wired. `MemoryPlatform` doesn't
+  reflect this either. See `LeaderboardScreen.tsx`'s country `<select>`.
+
+- **`shared/isoWeek.ts` / `worker/src/dateKeys.ts` still have adjacent, not fully
+  unified, ISO-week logic.** `weekKeyUtc`/`mondayOfIsoWeek1` live in
+  `shared/isoWeek.ts` and are re-exported by `dateKeys.ts` — no duplication of
+  those two — but `dateKeys.ts`'s own remaining helpers (`weeksBetween`,
+  `monthsBetween`, etc.) and `shared/isoWeek.ts`'s client-only range formatting
+  (`src/leaderboard/weekRangeFormat.ts`) evolved somewhat independently during
+  this session. Worth a pass to confirm there's no remaining redundant logic
+  once the response-shape-contract session (see below) happens.
+
+- **`screen-flow.svg` is stale.** Its `LEADERBOARD` node still says "YouTube
+  native"（obsolete, no `ALIAS_SETUP` node exists at all. Per the file's own
+  header note, all updates to this diagram are AI-generated from natural-language
+  requests, never hand-edited — needs a dedicated request to regenerate it once
+  the current screen set is considered stable.

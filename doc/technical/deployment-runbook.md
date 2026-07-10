@@ -64,8 +64,9 @@ VITE_WORKER_BASE_URL=https://plates-worker.workers.dev
 
 ```
 cd worker
-npm exec wrangler -- dev --env staging   # starts the worker at http://localhost:8787, with D1/DO simulated locally
-npm exec wrangler -- d1 execute plates-db-staging --env staging --local --file=./src/d1/schema.sql   # without --remote → applies to the D1 locally persisted
+npm run dev
+> or npm exec wrangler -- dev --env development   # starts the worker at http://localhost:8787, with D1/DO simulated locally
+npm exec wrangler -- d1 execute plates-db-staging --env development --local --file=./src/d1/schema.sql   # without --remote → applies to the D1 locally persisted
 ```
 
 Para que este modo local también valide contra Google real, crear un `worker/.dev.vars` (añadir a `.gitignore`, nunca commitear) con:
@@ -81,3 +82,5 @@ SESSION_SIGNING_SECRET=...
 > en [explorer](http://localhost:8787/cdn-cgi/explorer) hay una UI para inspeccionar la BD
 
 > para resetear los datos borrar `.wrangler\state\v3\do`
+
+> para avanzar el tiempo en local `curl.exe -X POST http://localhost:8787/dev/advance-time/week`

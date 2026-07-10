@@ -18,41 +18,10 @@ know anything about Cloudflare directly — they only call `PlatformService` met
 | `markRulesIntroSeen(lang: string): Promise<void>` | Persists `hasSeenRulesIntro = true` on the player's profile. Called once, the first time the player dismisses the rules overlay with "don't show again". |
 | `onPause(callback): void` / `onResume(callback): void` | Page Visibility API wiring. |
 | `showRewardedAd(): Promise<boolean>` | Delegates to the active `AdProvider`; resolves `true` if the rewarded flow completed. |
-
-### Key shapes
-
-```typescript
-interface PlayerProfile {
-  alias: string;
-  country: string;
-  dailyStreak: number;
-  hasSeenRulesIntro: boolean; // resolved per queried lang on the Worker side
-  adsEnabled: boolean;
-}
-
-interface AttemptRecord {
-  word: string;
-  valid: boolean;
-  score: number;
-}
-
-interface NormalModeStatus {
-  daySeed: string;
-  puzzle: { consonants: string[]; digits: string; bonusType: PlateBonusType };
-  attemptsUsedToday: number;
-  bestScoreToday: number;
-  attemptsHistory: AttemptRecord[]; // full history for the day, for the detail overlay
-  player: PlayerProfile;
-}
-
-interface AttemptResult {
-  valid: boolean;
-  scoreThisAttempt: number;
-  attemptsUsedToday: number;
-  bestScoreToday: number;
-  player: PlayerProfile;
-}
-```
+| `checkAliasAvailability(alias): Promise<AliasAvailability>` | Real-time hint, debounced client-side. |
+| `setupAlias(alias): Promise<AliasSetupResult>` | Authoritative — may still return `reason: "taken"` even if the check above passed. |
+| `getAvailableLeaderboardPeriods(lang): Promise<AvailableLeaderboardPeriods>` | Which tabs to render — driven by data existence. |
+| `getLeaderboard(lang, period, country?, year?, month?): Promise<LeaderboardResult>` | |
 
 ## 3. Available Strategies
 

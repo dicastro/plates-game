@@ -273,6 +273,8 @@ Worker will have its own `tsconfig` that also includes it. Current modules:
 | `shared/scoring.ts` | Score formula, `PlateBonusType` |
 | `shared/wordValidation.ts` | Structural pre-check (`isStructurallyValid`) |
 | `shared/gameConfig.ts` | Tunable game constants (`NORMAL_MODE_DAILY_ATTEMPTS_LIMIT`, `MIN_PLAYABLE_HEIGHT_PX`) |
+| `shared/apiRoutes.ts` | Route definitions (path+query match/build/parse) — single source of truth for every Worker endpoint, shared by client and Worker |
+| `shared/isoWeek.ts` | ISO-8601 week-key helpers shared by Worker (`dateKeys.ts` re-exports `weekKeyUtc`) and client (week-range display) |
 
 Rule: a module belongs in `shared/` if and only if the Worker needs it. Pure
 client UI logic stays in `src/`.
@@ -327,19 +329,40 @@ request is processed. This also makes the DO's data visible in Wrangler's Local
 Explorer (`/cdn-cgi/explorer`) during local development — see
 `doc/technical/local-development.md`.
 
-### 21. Ranking Model — Closed-Period Projection Only
+### 21. Ranking Model — Closed-Period Projection, Country-Scoped Availability Index
 
-`player_period_stats` (D1) holds one row per `(player, lang)` with only **closed**
-period totals (previous week/month/year, lifetime-up-to-yesterday) plus denormalized
-`alias`/`country`. It never stores per-day history — a "last week" ranking query reads
-directly from `previous_week_total` rather than aggregating daily rows. The row is
-written exactly once per lang, exclusively from the Durable Object's lazy daily
-rollover (triggered on the next request after a `daySeed` change) — never from a
-same-day attempt. Consequence, worth remembering: a period's contribution to the
-ranking only lands once the player plays again on a later day; a player who stops
-mid-period is not retroactively included in that period's closed totals for ranking
-purposes. The actual leaderboard **read** endpoints (with a Cache API layer keyed by
-UTC-midnight TTL) are designed but not yet implemented — see `doc/NEXT_STEPS.md`.
+`player_period_stats` (D1) holds one row per `(player, lang)` with only the
+**previous week** total (`week_previous_key`/`score`) plus a lifetime running
+total (`lifetime_score_up_to_last_week`) — no day-level or month/year-level
+"previous" columns; those don't need a rolling previous/current pair because
+they're historized in full.
+
+`player_year_stats` (D1) holds one row per `(player, lang, year)` with a
+NULLable column per month plus `year_score` — NULL means "not yet closed for
+this player", 0 means "closed, scored nothing". Written only on the exact
+rollover that closes that month/year, regardless of how long the player was
+away — no discard-on-gap behavior here (unlike week, which does discard on
+gaps >1, an accepted tradeoff for a rolling single-slot value).
+
+Neither table is ever scanned in full to answer "what rankings exist" or
+"how many players/countries are in this one" — both tables scale with
+player count, which is unbounded. `available_periods` (D1) is a
+country×period grain projection (`lang, period_type, period_key, country` →
+`player_count`), written once per period-close event (same `env.DB.batch()`
+call as the score write), that answers both questions in time bounded by
+country count (≤250), never player count. `period_type` covers
+`week`/`month`/`year`/`total` uniformly; `total`'s "first time this player
+ever closes a week for this lang" flag lives on the Durable Object itself
+(`has_counted_in_lifetime_total`), read for free from the already-loaded
+row — no extra D1 read needed to decide whether a player counts toward the
+lifetime total more than once.
+
+The Normal Mode leaderboard has four views: **last week**, **month**
+(navigable across any closed month), **year** (navigable across any closed
+year), and **total** (lifetime up to last week's close). There is no "daily"
+ranking view — removed from the original design; a single day's score is too
+volatile and too easily gamed by refresh-timing to be a meaningful ranking
+window.
 
 ### 22. Login Gating Model — Home Reachable Without a Session
 
@@ -353,6 +376,26 @@ trying to reach; that intent travels inside the OAuth `state` token (already use
 CSRF) round-trip and comes back as a `?intent=` query param on the Worker's redirect to
 `FRONTEND_BASE_URL`, letting `SplashScreen` land the player directly back on what they
 were doing instead of a bare `HOME` after the full-page OAuth redirect/reload.
+
+### 23. Alias System — Editable Handle, D1-Enforced Uniqueness
+
+The player's `alias` is set once, mandatorily, right after first login
+(`hasCompletedAliasSetup` flag on `player`, global — not per-`lang`) via a
+dedicated `ALIAS_SETUP` screen gated both from `SplashScreen` (post-login
+intent flow) and `HomeScreen` (lazy check on mount, covering the "no forced
+session on cold start" case per decision 22). It is **not permanently
+frozen** — a future Settings screen will allow changing it; nothing about
+the schema or the gating treats it as an immutable identifier (the Worker
+never uses `alias` for DO resolution, only `authProviderId:externalProviderId`).
+
+Uniqueness cannot be enforced by querying Durable Objects as a set (they
+aren't queryable that way), so a dedicated D1 table
+(`aliases: alias PK, player_id, auth_provider_id, external_provider_id`)
+serves two purposes at once: a real `UNIQUE` constraint (the actual source
+of truth — client-side real-time availability checks are UX convenience
+only, always re-validated by the `INSERT` itself) and a reverse index
+(alias → the two fields needed to re-derive that player's Durable Object ID
+via `idFromName()`, without storing a redundant `do_id`).
 
 ---
 

@@ -16,6 +16,8 @@ only bundles `src/`, so Worker code never ends up in the frontend's build output
 | Per-room state (Travel/Remote) | 1 Durable Object per room | Same reasoning, enables a future move to native WebSockets for real-time sync. |
 | Leaderboard | D1, one table per `lang` (or a `lang` column with all queries scoped by it) | Durable Objects cannot be queried/sorted as a set; D1 holds a sortable, filterable projection updated by each player's Durable Object on every score change. Never the source of truth — that remains the Durable Object. |
 | Immutable summary of finished rooms (Travel/Remote) | D1 | Once a room finishes, its Durable Object projects an immutable snapshot; the room's Durable Object can then be cleaned up. The finished-rooms lobby reads this projection, never Durable Objects directly — it needs to sort/paginate/filter, same as the leaderboard. |
+| Leaderboard projection | D1 — `player_period_stats` (week+lifetime), `player_year_stats` (month/year history), `available_periods` (country×period availability + counts, see `AI_CONTEXT.md` decision 21) | Durable Objects aren't queryable as a set; D1 holds sortable/filterable projections. `available_periods` exists specifically so "which rankings exist" and "how many players/countries" never scan the player-grain tables. |
+| Alias uniqueness | D1 — `aliases` (alias PK, player_id, auth/external provider id) | Real `UNIQUE` constraint + reverse index to re-derive a Durable Object ID from an alias — see `AI_CONTEXT.md` decision 24. |
 
 ## 3. Multi-Language Parametrization
 
@@ -59,24 +61,23 @@ sequence) and a new D1 partition/binding, not new Worker code.
 | `POST /normal/enter` | Yes | Body: `{ lang }`. Returns `NormalModeStatus`. |
 | `POST /normal/attempt` | Yes | Body: `{ lang, word }`. Returns `AttemptResult`. |
 | `POST /player/prefs` | Yes | Body: `{ lang, hasSeenRulesIntro: true }`. |
+| `GET /alias/check?alias=` | Yes | Real-time availability hint only — never the source of truth. |
+| `POST /alias/setup` | Yes | Body: `{ alias }`. The `INSERT` into `aliases` is what actually enforces uniqueness. |
+| `GET /leaderboard/:lang/available` | Yes | Which periods (week/month/year) have any data, driven by `available_periods` existence — never by elapsed wall-clock time. |
+| `GET /leaderboard/:lang?period=&country=&year=&month=` | Yes | Top-N + own entry if outside it + `totalPlayers`/`totalCountries` (from `available_periods`, not a scan of the ranking table). |
+
+Every route above is defined once in `shared/apiRoutes.ts` via `defineRoute()` —
+match, build, and parse (including named missing-parameter errors) live
+together per route, never duplicated between client and Worker. `index.ts`
+iterates `API_ROUTES` generically; there are no hand-written regexes per
+endpoint outside that one file.
 
 All authenticated routes are wrapped by `withSession()` (`routes/withSession.ts`), a
 higher-order function — not a class hierarchy, since Worker route handlers are plain
 functions, not stateful objects — that resolves and validates the session cookie once,
 before the handler runs.
 
-## 6. Leaderboard Read Endpoints — Not Yet Implemented
-
-D1 schema and write path (§2, `player_period_stats`) are in place; the read endpoints
-(`GET /leaderboard/:lang`, optionally `?country=XX`, behind a Cache API layer with a
-TTL to next UTC midnight) are designed but not implemented — see `doc/NEXT_STEPS.md`.
-
-| Endpoint | Scope |
-|---|---|
-| `GET /leaderboard/:lang` | Global ranking for that dictionary/plate language. |
-| `GET /leaderboard/:lang?country=XX` | Same language, filtered to one country (derived from `CF-IPCountry` at write time, stored on the D1 row — never a separate ranking dimension on its own). |
-
-## 7. Dynamic Sharing — Open Graph Previews
+## 6. Dynamic Sharing — Open Graph Previews
 
 When a player shares a result, an **immutable snapshot** is written to a dedicated D1 table
 (`shared_results: resultId, lang, alias, plateDisplay, score, createdAt, expiresAt`) — never
@@ -93,14 +94,14 @@ game's static, generic Open Graph metadata rather than showing an error.
 `expiresAt` and the exact cleanup strategy (scheduled deletion vs. filtering expired rows at
 read time) are implementation details to be finalized in the relevant implementation session.
 
-## 8. Caching
+## 7. Caching
 
 No endpoint in this design is anonymous/cacheable at the zone level — every Normal Mode and
 leaderboard call is tied to a specific authenticated player or a specific `lang`/`resultId`
 lookup that varies per request. Caching is not part of this design; if a future endpoint
 needs it (e.g. a fully public, non-personalized summary), it will be evaluated then.
 
-## 9. Finished Rooms Projection (Travel/Remote)
+## 8. Finished Rooms Projection (Travel/Remote)
 
 When a Travel/Remote room finishes, its Durable Object projects an immutable summary to D1:
 
@@ -119,7 +120,7 @@ finished_rooms: roomId, mode, roomName, country, startedAt, finishedAt, expiresA
 - The lobby's "finished rooms" list reads exclusively from this table, never from a
   Durable Object directly — consistent with the leaderboard's read model (§6).
 
-## 10. Environments
+## 9. Environments
 
 Cloudflare Workers supports multiple named environments per project (`wrangler.toml`'s
 `[env.*]` blocks), each with its own bindings (Durable Object namespace, D1 database,
@@ -136,7 +137,7 @@ mode (`development`, `cf-staging`, `production` — see `doc/technical/build-pip
 exercising Durable Objects/D1/OAuth, which `MemoryPlatform` cannot simulate, without ever
 touching `production` data.
 
-## 11. CORS
+## 10. CORS
 
 Every fetch-based endpoint (all except the OAuth start/callback, which are full-page
 navigations, unaffected by CORS) requires explicit CORS headers, since the frontend

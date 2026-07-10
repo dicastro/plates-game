@@ -28,11 +28,12 @@ Each player has exactly one Durable Object, keyed by `playerId`, with two SQL ta
 (`ctx.storage.sql` — see `AI_CONTEXT.md` decision 20):
 
 - `player` (single row): `player_id`, `auth_provider_id`, `external_provider_id`,
-  `alias`, `country`, `ads_enabled`.
-- `normal_mode_lang_state` (one row per `lang`): today's working state
-  (`attempts_used_today`, `today_best_score`, `today_attempts_json`) plus period
-  buckets (week/month/year current+previous, `lifetime_total_up_to_yesterday`,
-  `daily_streak`).
+  `alias`, `country`, `ads_enabled`, `has_completed_alias_setup`.
+- `normal_mode_lang_state` (one row per `lang`): `today_day_seed`,
+  `today_score`, `today_attempts_json`, `attempts_used_today`, plus
+  current-period trackers (`week_current_key/score`,
+  `month_current_key/score`, `year_current_key/score`),
+  `has_counted_in_lifetime_total`, `daily_streak`.
 
 The Durable Object serializes all operations on a given player, eliminating race
 conditions between concurrent requests without manual locking — this is the actual

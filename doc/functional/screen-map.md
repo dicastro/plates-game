@@ -33,7 +33,7 @@ The game is **silent on load by design** — not a persisted preference, since t
 | `REMOTE_GAME` | Remote — Game | The puzzle engine in Remote Mode configuration (blind leaderboard) |
 | `REMOTE_RESULT` | Remote — Result | Post-submission result (own word only — blind until window closes) |
 | `REMOTE_FINAL` | Remote — Final Ranking | Revealed full ranking (available once all players submitted or time expired) |
-| `LEADERBOARD` | YouTube Leaderboard | Native YouTube leaderboard overlay (ytgame SDK call) |
+| `LEADERBOARD` | Leaderboard | Leaderboard overlay with last week, month, year, total tabs |
 
 ---
 
@@ -62,6 +62,7 @@ export type AppScreen =
   | "SPLASH"
   | "LOGIN"
   | "HOME"
+  | "ALIAS_SETUP"
   | "SETTINGS"          // overlay — stacks over current screen
   | "WHATS_NEW"         // overlay — stacks over current screen
   | "NORMAL_GAME"

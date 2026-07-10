@@ -19,7 +19,12 @@ export interface PlayerProfile {
   country: string;
   dailyStreak: number;
   hasSeenRulesIntro: boolean;
+  hasCompletedAliasSetup: boolean;
   adsEnabled: boolean;
+  todayScore: number;
+  weekCurrentScore: number;
+  monthCurrentScore: number;
+  yearCurrentScore: number;
 }
 
 export interface DailyPuzzle {
@@ -42,6 +47,7 @@ export interface AttemptResult {
   scoreThisAttempt: number;
   attemptsUsedToday: number;
   bestScoreToday: number;
+  attemptsHistory: AttemptRecord[];
   player: PlayerProfile;
 }
 
@@ -49,4 +55,39 @@ export interface DailyPuzzle {
   consonants: string[];
   digits: string;
   bonusType: PlateBonusType;
+}
+
+// ---- Alias setup ----
+export interface AliasAvailability {
+  available: boolean;
+}
+
+export interface AliasSetupResult {
+  success: boolean;
+  reason?: "taken" | "invalid"; // "taken" = unique constraint violation on INSERT
+  player: PlayerProfile;
+}
+
+// ---- Leaderboard ----
+export type LeaderboardPeriodType = "week" | "month" | "year" | "total";
+
+export interface LeaderboardEntry {
+  rank: number;
+  alias: string;
+  country: string;
+  score: number;
+}
+
+export interface LeaderboardResult {
+  entries: LeaderboardEntry[];       // top N
+  ownEntry: LeaderboardEntry | null; // present only if the requester isn't in `entries`
+  intervalLabel: string;             // e.g. "2026-07-07" for period=day — client formats for display
+  totalPlayers: number;
+  totalCountries?: number;           // only present when no country filter is applied
+}
+
+export interface AvailableLeaderboardPeriods {
+  week: boolean;
+  months: Array<{ year: number; month: number }>; // closed months with data
+  years: number[];                                 // closed years with data
 }

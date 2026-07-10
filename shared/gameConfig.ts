@@ -4,3 +4,6 @@
 
 export const NORMAL_MODE_DAILY_ATTEMPTS_LIMIT = 5;
 export const MIN_PLAYABLE_HEIGHT_PX = 480;
+export const ALIAS_MIN_LENGTH = 3;
+export const ALIAS_MAX_LENGTH = 20;
+export const LEADERBOARD_TOP_N = 100;

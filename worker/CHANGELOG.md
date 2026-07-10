@@ -1,5 +1,15 @@
 
 
+## [0.3.0](///compare/back-v0.2.0...back-v0.3.0) (2026-07-10)
+
+
+### Features
+
+* **back:** implement alias uniqueness and closed-period leaderboard ranking 29f0ded
+* **back:** implement alias uniqueness and closed-period leaderboard ranking 9bb3df8
+* **shared:** add typed API route contract, alias/leaderboard types, ISO-week helpers 2ae8c3f
+* **shared:** add typed API route contract, alias/leaderboard types, ISO-week helpers 7916163
+
 ## 0.2.0 (2026-07-07)
 
 
